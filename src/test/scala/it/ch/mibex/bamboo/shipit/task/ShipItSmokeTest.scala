@@ -1,7 +1,6 @@
 package it.ch.mibex.bamboo.shipit.task
 
 import java.util
-import javax.inject.Inject
 
 import ch.mibex.bamboo.shipit.task.ShipItTaskConfigurator
 import com.atlassian.bamboo.pageobjects.BambooTestedProduct
@@ -10,18 +9,16 @@ import com.atlassian.bamboo.pageobjects.pages.admin.AbstractBambooAdminPage
 import com.atlassian.bamboo.pageobjects.pages.plan.configuration.JobTaskConfigurationPage
 import com.atlassian.bamboo.pageobjects.pages.tasks.TaskComponent
 import com.atlassian.bamboo.testutils.model.{TestBuildDetails, TestJobDetails}
+import com.atlassian.pageobjects.TestedProductFactory
 import com.atlassian.pageobjects.elements.query.Poller
 import com.atlassian.pageobjects.elements.{ElementBy, PageElement}
-import com.atlassian.pageobjects.{PageBinder, TestedProductFactory}
-import com.atlassian.webdriver.AtlassianWebDriver
 import com.google.common.collect.Maps
 import org.junit.runner.RunWith
 import org.openqa.selenium.WebElement
-import org.openqa.selenium.support.FindBy
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
-
+// see https://ecosystem.atlassian.net/wiki/display/SELENIUM/Building+Page+Objects+with+Atlassian+Selenium
 class AdminSettingsComponent extends AbstractBambooAdminPage {
 
   @ElementBy(name =  "save")
@@ -57,13 +54,7 @@ class AdminSettingsComponent extends AbstractBambooAdminPage {
 }
 
 class ShipItTaskConfigComponent extends TaskComponent {
-  @Inject
-  var driver: AtlassianWebDriver = null
-
-  @Inject
-  var binderL: PageBinder = null
-
-  @FindBy(id =  ShipItTaskConfigurator.IsPublicVersionField)
+  @ElementBy(id =  ShipItTaskConfigurator.IsPublicVersionField)
   var isPublicVersionField: WebElement = null
 
   override def updateTaskDetails(map: util.Map[String, String]): Unit = {
