@@ -4,25 +4,23 @@
 
 *Ship your plug-ins to the Atlassian Marketplace with one click*
 
-This Bamboo task uploads your plug-ins to the Atlassian Marketplace. Its use case is that you create a release in JIRA
-with a new build and the plug-in collects the necessary information like the release version, the 
-name and the summary from the associated JIRA version. This means that you don't have to supply the information for
-a new Marketplace manually, but instead the plug-in is able to do this.
+This Bamboo task uploads your plug-ins to the Atlassian Marketplace. Its intended use case is that you create a release in JIRA with a new build and the plug-in collects the necessary information like the release version, the 
+name and the summary from the associated JIRA version. This means that you don't have to supply all the information for
+a new Marketplace version of your plug-in manually, but instead this Bamboo task is able to do that. It also creates release notes based on the JIRA issues associated with your JIRA version.
 
-All you need to do is to add the provided Bamboo task to your build and configure it as can be seen in this screenshot:
+All you need to do is to add this Bamboo task to your build and configure it as can be seen in this screenshot:
 
-![Screenshot global pull request comment plugin](doc/task-config.png)
+![Screenshot Bamboo task configuration](doc/task-config.png)
 
 Then, create a release with a new build in JIRA:
 
-![Screenshot global pull request comment plugin](doc/release-from-jira.png)
+![Screenshot of how to trigger a release in JIRA](doc/release-from-jira.png)
 
 And a new release is created in the Atlassian Marketplace:
 
-![Screenshot global pull request comment plugin](doc/marketplace-version.png)
+![New Marketplace version](doc/marketplace-version.png)
 
-Note that the plug-in will NOT create a Marketplace release if the build is not triggered from JIRA. This prevents
-releases from ordinary Bamboo plan builds.
+Note that the plug-in will NOT ship your plug-in to the Marketplace if the build was not triggered from JIRA. This prevents releases from "ordinary" Bamboo plan builds. The plug-in also supports Bamboo deployment projects.
 
 ## Installation
 
@@ -33,8 +31,8 @@ The plug-in will probably once be available in the Atlassian Marketplace. Until 
 ## Configuration
 
 Beside the options in the Bamboo task configuration there is also a possibility to override the build number as a build
-variable. This is useful if you do not want the plug-in to deduce the build number from the plug-ins version number (e.g.,
-a plug-in version 1.2.3 results in the deduced build number 100200300). To override this behaviour, just pass the build
-variable "shipit2mpac.buildnr" from the JIRA release dialog:
+variable. This is useful if you do not want the plug-in to deduce the build number from the plug-ins version number (e.g., a plug-in version 1.2.3 results in the deduced build number 100200300). To override this behaviour, just pass the build variable "shipit2mpac.buildnr" from the JIRA release dialog:
 
-![Screenshot global pull request comment plugin](doc/build-variable.png)
+![Screenshot Bamboo variable to override the build number](doc/build-variable.png)
+
+The Bamboo taskn requires that you configure an artifact to deploy as your new plug-in version. See [this Atlassian page](https://confluence.atlassian.com/display/BAMBOO058/Sharing+artifacts) on how to achieve this.
