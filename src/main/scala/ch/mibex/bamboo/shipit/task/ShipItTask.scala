@@ -54,7 +54,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                       isAllowedTriggerReason: TriggerReason => Boolean): TaskResult = {
     val buildLogger = taskContext.getBuildLogger
     val taskBuilder = TaskResultBuilder.newBuilder(taskContext)
-    if (!isAllowedTriggerReason(commonContext.getTriggerReason)) {
+    if (!isTriggeredFromJira(commonContext) || !isAllowedTriggerReason(commonContext.getTriggerReason)) {
       buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.not.triggered.from.jira"))
       return taskBuilder.success.build
     }
@@ -70,7 +70,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
           buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.successfully.shipped",
                                                             newVersion.getVersion,
                                                             newPluginVersion.plugin.getName))
-          storeResultsLinkInfos(taskContext, newVersion)
+          storeResultsLinkInfo(taskContext, newVersion)
           taskBuilder.success.build
         case Left(mpacUploadError) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(mpacUploadError.i18n, mpacUploadError.reason))
@@ -79,7 +79,17 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  private def storeResultsLinkInfos(commonTaskContext: CommonTaskContext, newVersion: PluginVersion) {
+  // this is an additional safety check that this build has been triggered from JIRA because
+  // the trigger reason JIRA is not always propagated to the deployment project
+  private def isTriggeredFromJira(buildContext: CommonContext) = {
+    val vars = buildContext.getVariableContext.getEffectiveVariables
+    Option(vars.get("jira.version")) match {
+      case Some(jiraVersion) if jiraVersion.getValue.nonEmpty => true
+      case _ => false
+    }
+  }
+
+  private def storeResultsLinkInfo(commonTaskContext: CommonTaskContext, newVersion: PluginVersion) {
     commonTaskContext match {
       case t: TaskContext if newVersion.getBinaryUri.isDefined =>
         val customBuildData = t.getBuildContext.getBuildResult.getCustomBuildData
