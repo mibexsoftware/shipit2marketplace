@@ -1,0 +1,11 @@
+target/
+classes/
+*~
+amps-standalone/
+.DS_Store
+
+### IntelliJ ###
+**/.idea
+*.iml
+out/
+

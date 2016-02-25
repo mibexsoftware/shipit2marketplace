@@ -1,0 +1,66 @@
+<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}" />
+        <param name="plugin-icon">images/pluginIcon.png</param>
+        <param name="plugin-logo">images/pluginLogo.png</param>
+    </plugin-info>
+
+    <!-- add our i18n resource -->
+    <resource type="i18n" name="i18n" location="shipit"/>
+    
+    <!-- add our web resources -->
+    <web-resource key="shipit-resources" name="shipit Web Resources">
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <resource type="download" name="shipit.css" location="/css/shipit.css"/>
+        <resource type="download" name="shipit.js" location="/js/shipit.js"/>
+        <resource type="download" name="images/" location="/images"/>
+        <context>shipit</context>
+    </web-resource>
+
+    <!-- Bamboo task -->
+    <taskType key="shipit2marketplace.task" name="ShipIt to Marketplace" class="ch.mibex.bamboo.shipit.task.ShipItTask">
+        <description key="shipit2marketplace.task.desc"/>
+        <category name="deployment"/>
+        <configuration class="ch.mibex.bamboo.shipit.task.ShipItTaskConfigurator"/>
+        <resource type="freemarker" name="edit" location="templates/task-config.ftl"/>
+        <help link="shipit.task.help.link" title="shipit.task.help.link.title" />
+        <resource type="download" name="icon" location="images/pluginTask.png"/> <!-- 80 by 80 pixels transparent -->
+        <runtimeTaskDataProvider class="ch.mibex.bamboo.shipit.task.ShipItTaskDataProvider"/>
+    </taskType>
+
+    <!-- Link to Marketplace build -->
+    <web-panel class="ch.mibex.bamboo.shipit.task.ShipItResultsLinkPanel" name="Show link to Marketplace build"
+               key="shipit2marketplace.build.result.link" location="chainresult.summary.right" weight="110">
+        <description key="shipit2marketplace.build.result.description"/>
+    </web-panel>
+
+    <!-- Active Objects -->
+    <ao key="ao-module">
+        <description>The ActiveObject entities for this plugin.</description>
+        <entity>ch.mibex.bamboo.shipit.settings.AoAdminSettings</entity>
+    </ao>
+
+    <!-- Admin config -->
+    <web-item key="shipit.admin.webitem" name="ShipIt to Marketplace" section="system.admin/plugins" weight="10">
+        <description key="shipit.admin.link.description"/>
+        <label key="shipit.admin.link.label"/>
+        <link linkId="shipit.admin.link">/admin/shipit2mpac/viewShip2MpacConfiguration.action</link>
+    </web-item>
+    <xwork key="shipit.admin.xwork" name="ShipIt to Marketplace">
+        <package name="shipit2mpac" extends="admin" namespace="/admin/shipit2mpac">
+            <action name="viewShip2MpacConfiguration" class="ch.mibex.bamboo.shipit.settings.AdminSettingsAction" method="default">
+                <result name="input" type="freemarker">/templates/admin-config.ftl</result>
+                <result name="success" type="freemarker">/templates/admin-config.ftl</result>
+            </action>
+            <action name="updateShip2MpacConfiguration" class="ch.mibex.bamboo.shipit.settings.AdminSettingsAction" method="edit">
+                <result name="input" type="freemarker">/templates/admin-config.ftl</result>
+                <result name="success" type="freemarker">/templates/admin-config.ftl</result>
+                <result name="error" type="freemarker">/templates/admin-config.ftl</result>
+                <result name="system-error" type="freemarker">/templates/admin-config.ftl</result>
+            </action>
+        </package>
+    </xwork>
+
+</atlassian-plugin>
