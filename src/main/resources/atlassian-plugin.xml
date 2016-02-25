@@ -21,7 +21,7 @@
 
     <!-- Bamboo task -->
     <taskType key="shipit2marketplace.task" name="ShipIt to Marketplace" class="ch.mibex.bamboo.shipit.task.ShipItTask">
-        <description key="shipit2marketplace.task.desc"/>
+        <description key="shipit.task.desc"/>
         <category name="deployment"/>
         <configuration class="ch.mibex.bamboo.shipit.task.ShipItTaskConfigurator"/>
         <resource type="freemarker" name="edit" location="templates/task-config.ftl"/>
