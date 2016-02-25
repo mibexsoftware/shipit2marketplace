@@ -6,8 +6,8 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
-    <artifactId>shipit2mpac-SNAPSHOT</artifactId>
-    <version>1.0.0</version>
+    <artifactId>shipit2mpac</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
 
     <organization>
         <name>Mibex Software GmbH</name>
