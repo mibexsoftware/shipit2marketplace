@@ -7,4 +7,6 @@ object Constants {
   val BambooBuildNrVariableKey = "shipit2mpac.buildnr"
   val JiraReleaseTriggerReasonKey = "com.atlassian.bamboo.plugin.jira:jiraReleaseTriggerReason"
   val PluginTaskKey = "shipit2marketplace.task"
+  val MaxReleaseSummaryLength = 80
+  val MaxReleaseNotesLength = 1000
 }

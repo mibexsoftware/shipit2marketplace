@@ -46,6 +46,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
 
   import ShipItTaskDataProvider._
   import ShipItTaskConfigurator._
+  import Constants._
 
   // we should not throw any exceptions from this method because otherwise the build cannot complete!
   override def populateRuntimeTaskData(taskDefinition: TaskDefinition,
@@ -93,7 +94,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                           taskDefinition: TaskDefinition,
                                           commonContext: CommonContext,
                                           runtimeTaskData: mutable.HashMap[String, String]) {
-    val bambooUserName = getUserToCollectJiraInfos(projectInfos, taskDefinition).getOrElse({
+    val userToCollectJiraInfo = getUserToCollectJiraInfos(projectInfos, taskDefinition).getOrElse({
       addBuildError(commonContext, "shipit.task.user.error")
       return
     })
@@ -103,7 +104,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
     })
     // this is necessary as otherwise we do not have the permission to make REST calls over the application
     // link as there is no user set when this task provider is run
-    val jiraJob = impersonationService.runAsUser(bambooUserName, new Callable[Unit] {
+    val jiraJob = impersonationService.runAsUser(userToCollectJiraInfo, new Callable[Unit] {
       override def call(): Unit = {
         try {
           val requestFactory = appLink.createAuthenticatedRequestFactory()
@@ -142,8 +143,11 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                   commonContext: CommonContext,
                                   runtimeTaskData: mutable.HashMap[String, String]) {
     jiraFacade.collectReleaseNotes(projectInfos.projectKey, projectInfos.version) match {
-      case Success(releaseNotes) =>
+      case Success(releaseNotes) if releaseNotes.length <= MaxReleaseNotesLength =>
         runtimeTaskData.put(ShipItReleaseNotes, releaseNotes)
+      case Success(releaseNotes) if releaseNotes.length > MaxReleaseNotesLength =>
+        val maxLengthParam = Option(MaxReleaseNotesLength.toString)
+        addBuildError(commonContext, "shipit.task.jira.releasenotes.too.long", param=maxLengthParam)
       case Failure(e) =>
         addBuildError(commonContext, "shipit.task.jira.releasenotes.failed", param=Option(e.getMessage))
     }
@@ -154,8 +158,11 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                     commonContext: CommonContext,
                                     runtimeTaskData: mutable.HashMap[String, String]) {
     jiraFacade.collectReleaseSummary(projectInfos.projectKey, projectInfos.version) match {
-      case Success(releaseSummary) =>
+      case Success(releaseSummary) if releaseSummary.length <= MaxReleaseSummaryLength =>
         runtimeTaskData.put(ShipItVersionDescription, releaseSummary)
+      case Success(releaseSummary) if releaseSummary.length > MaxReleaseSummaryLength =>
+        val maxLengthParam = Option(MaxReleaseSummaryLength.toString)
+        addBuildError(commonContext, "shipit.task.jira.releasesummary.too.long", param=maxLengthParam)
       case Failure(e) =>
         addBuildError(commonContext, "shipit.task.jira.releasesummary.failed", param=Option(e.getMessage))
     }
@@ -163,7 +170,9 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
 
   override def processRuntimeTaskData(taskDefinition: TaskDefinition, context: CommonContext): Unit = {}
 
-  override def processRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): Unit = {}
+  override def processRuntimeTaskData(taskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): Unit = {}
 
-  override def createRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): JMap[String, WhitelistedSerializable] = Map[String, WhitelistedSerializable]().asJava
+  override def createRuntimeTaskData(taskDefinition: RuntimeTaskDefinition, commonContext: CommonContext):
+    JMap[String, WhitelistedSerializable] = Map[String, WhitelistedSerializable]().asJava
+
 }
