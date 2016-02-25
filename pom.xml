@@ -6,7 +6,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
-    <artifactId>shipit2mpac</artifactId>
+    <artifactId>shipit2mpac-SNAPSHOT</artifactId>
     <version>1.0.0</version>
 
     <organization>
@@ -30,6 +30,12 @@
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
     </properties>
+
+    <scm>
+        <connection>scm:git:ssh://git@github.com:mibexsoftware/shipit2marketplace.git</connection>
+        <tag>HEAD</tag>
+        <url>https://github.com/mibexsoftware/shipit2marketplace.git</url>
+    </scm>
 
     <repositories>
         <repository>
@@ -75,6 +81,24 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.2</version>
+                <executions>
+                    <execution>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <timestampFormat>{0,date,yyyyMMdd-HHmmss}</timestampFormat>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                </configuration>
+            </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
