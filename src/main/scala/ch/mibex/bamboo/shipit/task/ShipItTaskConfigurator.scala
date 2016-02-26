@@ -164,7 +164,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     }
   }
 
-  private def getSettingsUrl = s"$getBambooBaseUrl/admin/viewShip2MpacConfiguration.action"
+  private def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
   private def checkJiraApplicationLink(jiraApplicationLink: ApplicationLink,
                                        userName: String,
