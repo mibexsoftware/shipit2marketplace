@@ -8,8 +8,6 @@ import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.CredentialsRequiredException
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
-import com.atlassian.bamboo.serialization.WhitelistedSerializable
-import com.atlassian.bamboo.task.runtime.RuntimeTaskDefinition
 import com.atlassian.bamboo.task.{RuntimeTaskDataProvider, TaskDefinition}
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
@@ -44,9 +42,9 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                           @ComponentImport jiraApplinksService: JiraApplinksService)
     extends RuntimeTaskDataProvider with Logging {
 
-  import ShipItTaskDataProvider._
-  import ShipItTaskConfigurator._
   import Constants._
+  import ShipItTaskConfigurator._
+  import ShipItTaskDataProvider._
 
   // we should not throw any exceptions from this method because otherwise the build cannot complete!
   override def populateRuntimeTaskData(taskDefinition: TaskDefinition,
@@ -169,10 +167,5 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
   }
 
   override def processRuntimeTaskData(taskDefinition: TaskDefinition, context: CommonContext): Unit = {}
-
-  override def processRuntimeTaskData(taskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): Unit = {}
-
-  override def createRuntimeTaskData(taskDefinition: RuntimeTaskDefinition, commonContext: CommonContext):
-    JMap[String, WhitelistedSerializable] = Map[String, WhitelistedSerializable]().asJava
 
 }

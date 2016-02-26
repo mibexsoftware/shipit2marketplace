@@ -8,7 +8,6 @@ import com.atlassian.bamboo.pageobjects.elements.TextElement
 import com.atlassian.bamboo.pageobjects.pages.admin.AbstractBambooAdminPage
 import com.atlassian.bamboo.pageobjects.pages.plan.configuration.JobTaskConfigurationPage
 import com.atlassian.bamboo.pageobjects.pages.tasks.TaskComponent
-import com.atlassian.bamboo.testutils.model.{TestBuildDetails, TestJobDetails}
 import com.atlassian.pageobjects.TestedProductFactory
 import com.atlassian.pageobjects.elements.query.Poller
 import com.atlassian.pageobjects.elements.{ElementBy, PageElement}
@@ -83,10 +82,10 @@ class ShiptItSmokeTest extends Specification   {
       val dashboard = bamboo.gotoLoginPage().loginAsSysAdmin()
       assert(dashboard.isLoggedIn)
 
-      val build = new TestBuildDetails("Smoke Test", "SMOKE", "SAND-JOB1", "Sandbox - Default Job")
-      val job = new TestJobDetails(build, "JOB1", "Default Job")
+//      val build = new TestBuildDetails("Smoke Test", "SMOKE", "SAND-JOB1", "Sandbox - Default Job")
+//      val job = new TestJobDetails(build, "JOB1", "Default Job")
 
-      val configForm = bamboo.getPageBinder.navigateToAndBind(classOf[JobTaskConfigurationPage], job)
+      val configForm = bamboo.getPageBinder.navigateToAndBind(classOf[JobTaskConfigurationPage], null)
       configForm.addNewTask("ShipIt to Marketplace", classOf[ShipItTaskConfigComponent], "", Maps.newHashMap())
       ok
     }

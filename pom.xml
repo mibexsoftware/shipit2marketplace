@@ -19,8 +19,8 @@
     <packaging>atlassian-plugin</packaging>
 
     <properties>
-        <bamboo.version>5.10.0</bamboo.version> <!-- 5.7.1 is more or less the only older version that works locally -->
-        <bamboo.data.version>5.2.0</bamboo.data.version> <!-- 3.2.2 is the old Bamboo data version, see here https://jira.atlassian.com/browse/BAM-14798 -->
+        <bamboo.version>5.7.0</bamboo.version>
+        <bamboo.data.version>3.2.2</bamboo.data.version>
         <bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>
         <amps.version>6.2.1</amps.version>
         <xvfb.enable>true</xvfb.enable>
