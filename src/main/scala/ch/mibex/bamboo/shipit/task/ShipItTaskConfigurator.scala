@@ -73,7 +73,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
     context.get("plan") match {
       case job: Job => createPlanVariablesIfNecessary(job.getParent)
-      case _ =>
+      case _ => // deployment project
         context.get("relatedPlan") match {
           case plan: ImmutableChain =>
             createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
