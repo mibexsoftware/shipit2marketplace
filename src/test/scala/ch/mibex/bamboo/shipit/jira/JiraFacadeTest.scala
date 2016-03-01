@@ -18,9 +18,8 @@ class JiraFacadeTest extends Specification with Mockito {
 
     "yield release notes with two entries for them" in new JiraReleaseNotesContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.collectReleaseNotes(projectKey, projectVersion) must_== Success(
+      jiraFacade.collectReleaseNotes(projectKey, projectVersion) must_==
         """* Think about caching strategy<br>* Bug fix: A problem which impairs or prevents the functions of the product"""
-      )
     }
 
   }
@@ -29,7 +28,7 @@ class JiraFacadeTest extends Specification with Mockito {
 
     "yield the summary for the version we are looking for" in new JiraReleaseSummaryContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.collectReleaseSummary(projectKey, "1.0.1") must_== Success("Datacenter compatibility")
+      jiraFacade.collectReleaseSummary(projectKey, "1.0.1") must_== "Datacenter compatibility"
     }
 
   }

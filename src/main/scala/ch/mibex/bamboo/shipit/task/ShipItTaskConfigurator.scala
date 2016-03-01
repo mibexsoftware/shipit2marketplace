@@ -12,10 +12,13 @@ import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.task.artifacts.{DownloaderArtifactCollector, SubscribedArtifactCollector}
 import com.atlassian.applinks.api.{ApplicationLink, ApplicationLinkResponseHandler, CredentialsRequiredException}
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
+import com.atlassian.bamboo.build.Job
+import com.atlassian.bamboo.chains.Chain
 import com.atlassian.bamboo.collections.ActionParametersMap
 import com.atlassian.bamboo.configuration.AdministrationConfigurationAccessor
 import com.atlassian.bamboo.deployments.DeploymentTaskContextHelper
-import com.atlassian.bamboo.plan.cache.{CachedPlanManager, ImmutableJob}
+import com.atlassian.bamboo.plan._
+import com.atlassian.bamboo.plan.cache.{CachedPlanManager, ImmutableChain, ImmutableJob}
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.user.{BambooAuthenticationContext, BambooUserManager}
@@ -45,6 +48,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
                                           @ComponentImport configAccessor: AdministrationConfigurationAccessor,
                                           @ComponentImport bambooUserManager: BambooUserManager,
                                           @ComponentImport variableDefinitionManager: VariableDefinitionManager,
+                                          @ComponentImport planManager: PlanManager,
                                           @ComponentImport bambooAuthContext: BambooAuthenticationContext,
                                           mpacCredentialsDao: AdminSettingsDao,
                                           downloaderArtifactCollector: DownloaderArtifactCollector,
@@ -67,6 +71,15 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     context.put(DeduceBuildNrField, java.lang.Boolean.TRUE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
+    context.get("plan") match {
+      case job: Job => createPlanVariablesIfNecessary(job.getParent)
+      case _ =>
+        context.get("relatedPlan") match {
+          case plan: ImmutableChain =>
+            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
+          case _ =>
+        }
+    }
   }
 
   private def collectArtifactsForUiList(taskContext: JMap[String, Object]) =
@@ -85,19 +98,25 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     val config = super.generateTaskConfigMap(actionParams, taskDefinition)
     config.put(UserNameField, actionParams.getString(UserNameField))
     config.put(IsPublicVersionField, actionParams.getBoolean(IsPublicVersionField).toString)
-    val deduceBuildNr = actionParams.getBoolean(DeduceBuildNrField)
-    config.put(DeduceBuildNrField, deduceBuildNr.toString)
+    config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
     config.put(ArtifactToDeployKeyField, actionParams.getString(ArtifactToDeployKeyField))
-    createGlobalBuildVarIfNecessary()
     config
   }
 
-  private def createGlobalBuildVarIfNecessary() {
-    if (Option(variableDefinitionManager.getGlobalVariableByKey(BambooBuildNrVariableKey)).isEmpty) {
-      val variableDefinitionFactory = new VariableDefinitionFactoryImpl()
-      val emptyValue = null
-      val buildNrGlobalVar = variableDefinitionFactory.createGlobalVariable(BambooBuildNrVariableKey, emptyValue)
+  private def createPlanVariablesIfNecessary(chain: Chain) {
+    val variableFactory = new VariableDefinitionFactoryImpl()
+    val emptyValue = null
+    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
+      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
       variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
+    }
+    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
+      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
+      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
+    }
+    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
+      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
+      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
     }
   }
 

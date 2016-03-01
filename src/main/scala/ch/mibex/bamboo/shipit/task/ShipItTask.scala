@@ -3,7 +3,7 @@ package ch.mibex.bamboo.shipit.task
 import java.util.{Map => JMap}
 
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade, NewPluginVersion}
-import ch.mibex.bamboo.shipit.task.artifacts.{SubscribedArtifactCollector, DownloaderArtifactCollector, ArtifactDownloaderTaskId, ArtifactSubscriptionId}
+import ch.mibex.bamboo.shipit.task.artifacts.{ArtifactDownloaderTaskId, ArtifactSubscriptionId, DownloaderArtifactCollector, SubscribedArtifactCollector}
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
 import com.atlassian.bamboo.deployments.projects.service.DeploymentProjectService
@@ -62,6 +62,11 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       throw new TaskException("Task definition not found")
     )
     val runtimeContext = getRuntimeContext(commonContext, taskDefinition)
+    // report errors detected in the run-time task provider
+    Option(runtimeContext.get(RunTimeTaskError)) foreach { e =>
+      buildLogger.addErrorLogEntry(e)
+      return taskBuilder.failed().build
+    }
     MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
       val newPluginVersion = collectDataForNewPluginVersion(taskContext, commonContext, taskDefinition, mpac)
       log.debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
@@ -118,11 +123,15 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                              taskDefinition: TaskDefinition,
                                              mpacFacade: MpacFacade) = {
     val runtimeContext = getRuntimeContext(commonContext, taskDefinition)
-    val releaseSummary = Option(runtimeContext.get(ShipItVersionDescription)).getOrElse(
-      throw new TaskException("Release summary could not be determined")
+    val releaseSummary = geValueFromPlanVariableOrRuntime(
+      planVariableKey = BambooReleaseSummaryVariableKey,
+      runtimeVariableKey = ShipItVersionDescription,
+      commonContext, runtimeContext
     )
-    val releaseNotes = Option(runtimeContext.get(ShipItReleaseNotes)).getOrElse(
-      throw new TaskException("Release notes could not be determined")
+    val releaseNotes = geValueFromPlanVariableOrRuntime(
+      planVariableKey = BambooReleaseNotesVariableKey,
+      runtimeVariableKey = ShipItReleaseNotes,
+      commonContext, runtimeContext
     )
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
       throw new TaskException("Public version setting not found")
@@ -160,6 +169,21 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     )
   }
 
+  private def geValueFromPlanVariableOrRuntime(planVariableKey: String,
+                                               runtimeVariableKey: String,
+                                               commonContext: CommonContext,
+                                               runtimeContext: JMap[String, String]) = {
+    val vars = commonContext.getVariableContext.getEffectiveVariables
+    Option(vars.get(planVariableKey)) match {
+      case Some(variable) if variable.getValue.trim.nonEmpty => // plan variables have precedence
+        variable.getValue
+      case _ =>
+        Option(runtimeContext.get(runtimeVariableKey)).getOrElse(
+          throw new TaskException(s"$planVariableKey and $runtimeVariableKey could not be determined")
+        )
+    }
+  }
+
   private def determineBuildNumber(commonContext: CommonContext,
                                    deduceBuildNr: Boolean,
                                    pluginInfo: PluginArtifactDetails) = {
@@ -170,8 +194,10 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       case Some(buildNr) if buildNr.getValue.isEmpty && deduceBuildNr =>
         Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
-        throw new TaskException("A build number has to be specified with the plan variable 'shipit2mpac.buildnr' " +
-                                "if the build number deduction feature is disabled.")
+        throw new TaskException(
+          s"""A build number has to be specified with the plan variable
+             | '$BambooBuildNrVariableKey' if the build number deduction feature is disabled.""".stripMargin
+        )
     }
   }
 

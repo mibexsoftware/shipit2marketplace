@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.util.{Failure, Success}
 
 
 object ShipItTaskDataProvider {
@@ -27,6 +26,7 @@ object ShipItTaskDataProvider {
   val ShipItReleaseNotes = "shipItReleaseNotes"
   val MpacVendorName = "shipItVendorName"
   val MpacVendorPassword = "shipItVendorPassword"
+  val RunTimeTaskError = "shipitRuntimetaskError"
 }
 
 case class JiraProjectInfo(projectKey: String, version: String, triggerUserName: String)
@@ -40,7 +40,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                           @ComponentImport bambooUserManager: BambooUserManager,
                                           @ComponentImport i18nResolver: I18nResolver,
                                           @ComponentImport jiraApplinksService: JiraApplinksService)
-    extends RuntimeTaskDataProvider with Logging {
+  extends RuntimeTaskDataProvider with Logging {
 
   import Constants._
   import ShipItTaskConfigurator._
@@ -53,16 +53,16 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
     // I have to use the trigger reason key instead of pattern matching on the trigger reason type
     // because of https://jira.atlassian.com/browse/BAM-17061
     if (commonContext.getTriggerReason.getKey != Constants.JiraReleaseTriggerReasonKey
-        && commonContext.getTriggerReason.getKey != DependencyTriggerReason.KEY) {
+      && commonContext.getTriggerReason.getKey != DependencyTriggerReason.KEY) {
       log.info("SHIPIT2MARKETPLACE: Build was not triggered manually from JIRA. Will not run.")
       return runtimeTaskData.asJava
     }
     getJiraInfosFromBuildEnv(commonContext) match {
       case Some(projectInfos) =>
-        appendReleaseInfosToRuntime(projectInfos, taskDefinition, commonContext, runtimeTaskData)
+        appendReleaseInfosToRuntimeIfNecessary(projectInfos, taskDefinition, commonContext, runtimeTaskData)
         appendMpacCredentialsToRuntime(runtimeTaskData, commonContext)
       case None =>
-        addBuildError(commonContext, "shipit.task.jira.data.retrieval.error")
+        rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.data.retrieval.error")
     }
     runtimeTaskData.asJava
   }
@@ -74,7 +74,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
         runtimeTaskData.put(MpacVendorName, credentials.getVendorUserName)
         runtimeTaskData.put(MpacVendorPassword, credentials.getVendorPassword)
       case None =>
-        addBuildError(commonContext, "shipit.task.marketplace.credentials.missing.error")
+        rememberError(runtimeTaskData, i18nKey = "shipit.task.marketplace.credentials.missing.error")
     }
   }
 
@@ -88,16 +88,29 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
     } yield JiraProjectInfo(projectKey, projectVersion, triggerUserName)
   }
 
-  private def appendReleaseInfosToRuntime(projectInfos: JiraProjectInfo,
-                                          taskDefinition: TaskDefinition,
-                                          commonContext: CommonContext,
-                                          runtimeTaskData: mutable.HashMap[String, String]) {
+  private def appendReleaseInfosToRuntimeIfNecessary(projectInfos: JiraProjectInfo,
+                                                     taskDefinition: TaskDefinition,
+                                                     commonContext: CommonContext,
+                                                     runtimeTaskData: mutable.HashMap[String, String]) {
+    val vars = commonContext.getVariableContext.getEffectiveVariables
+    val releaseSummaryPlanVariable = Option(vars.get(BambooReleaseSummaryVariableKey)) match {
+      case Some(variable) if variable.getValue.nonEmpty => Option(variable)
+      case _ => None
+    }
+    val releaseNotesPlanVariable = Option(vars.get(BambooReleaseNotesVariableKey)) match {
+      case Some(variable) if variable.getValue.nonEmpty => Option(variable)
+      case _ => None
+    }
+    if (releaseSummaryPlanVariable.isDefined && releaseNotesPlanVariable.isDefined) {
+      // both values are overridden by the user with plan variables, no need to get the data from JIRA
+      return
+    }
     val userToCollectJiraInfo = getUserToCollectJiraInfos(projectInfos, taskDefinition).getOrElse({
-      addBuildError(commonContext, "shipit.task.user.error")
+      rememberError(runtimeTaskData, i18nKey = "shipit.task.user.error")
       return
     })
     val appLink = jiraApplinksService.getJiraApplicationLinks.asScala.headOption.getOrElse({
-      addBuildError(commonContext, "shipit.task.jira.applink.missing.error")
+      rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.applink.missing.error")
       return
     })
     // this is necessary as otherwise we do not have the permission to make REST calls over the application
@@ -107,23 +120,32 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
         try {
           val requestFactory = appLink.createAuthenticatedRequestFactory()
           val jiraFacade = new JiraFacade(requestFactory)
-          collectReleaseNotes(projectInfos, jiraFacade, commonContext, runtimeTaskData)
-          collectReleaseSummary(projectInfos, jiraFacade, commonContext, runtimeTaskData)
+          if (releaseSummaryPlanVariable.isEmpty) {
+            rememberReleaseSummaryInRuntime(projectInfos, jiraFacade, commonContext, runtimeTaskData)
+          }
+          if (releaseNotesPlanVariable.isEmpty) {
+            rememberReleaseNotesInRuntime(projectInfos, jiraFacade, commonContext, runtimeTaskData)
+          }
         } catch {
           case e: CredentialsRequiredException =>
             val reauthUrl = e.getAuthorisationURI().toString
-            addBuildError(commonContext, "shipit.task.jira.applink.reauth.necessary", Option(reauthUrl))
+            rememberError(runtimeTaskData, "shipit.task.jira.applink.reauth.necessary", param = Option(reauthUrl))
           case e: Exception =>
-            addBuildError(commonContext, "shipit.task.jira.unknown.error", Option(e.getMessage))
+            log.error("SHIPIT2MARKETPLACE: failed to determine JIRA project info", e)
+            rememberError(runtimeTaskData, "shipit.task.jira.unknown.error", param = Option(e.getMessage))
         }
       }
     })
     jiraJob.call()
   }
 
-  private def addBuildError(commonContext: CommonContext, i18nKey: String, param: Option[String] = None) = {
+  // we cannot just add an error with commonContext.getCurrentResult.addBuildError, as these errors are not shown
+  // in deployment projects; we instead save the error and will report it later in the task
+  private def rememberError(runtimeTaskData: mutable.HashMap[String, String],
+                            i18nKey: String,
+                            param: Option[String] = None) = {
     val text = param.map(p => i18nResolver.getText(i18nKey, p)).getOrElse(i18nResolver.getText(i18nKey))
-    commonContext.getCurrentResult.addBuildErrors(List(text).asJava)
+    runtimeTaskData.put(RunTimeTaskError, text)
   }
 
   private def getUserToCollectJiraInfos(projectInfos: JiraProjectInfo, taskDefinition: TaskDefinition) = {
@@ -136,36 +158,32 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
     }
   }
 
-  private def collectReleaseNotes(projectInfos: JiraProjectInfo,
-                                  jiraFacade: JiraFacade,
-                                  commonContext: CommonContext,
-                                  runtimeTaskData: mutable.HashMap[String, String]) {
-    jiraFacade.collectReleaseNotes(projectInfos.projectKey, projectInfos.version) match {
-      case Success(releaseNotes) if releaseNotes.length <= MaxReleaseNotesLength =>
-        runtimeTaskData.put(ShipItReleaseNotes, releaseNotes)
-      case Success(releaseNotes) if releaseNotes.length > MaxReleaseNotesLength =>
-        val maxLengthParam = Option(MaxReleaseNotesLength.toString)
-        addBuildError(commonContext, "shipit.task.jira.releasenotes.too.long", param=maxLengthParam)
-      case Failure(e) =>
-        addBuildError(commonContext, "shipit.task.jira.releasenotes.failed", param=Option(e.getMessage))
+  private def rememberReleaseNotesInRuntime(projectInfos: JiraProjectInfo,
+                                            jiraFacade: JiraFacade,
+                                            commonContext: CommonContext,
+                                            runtimeTaskData: mutable.HashMap[String, String]) {
+    val releaseNotes = jiraFacade.collectReleaseNotes(projectInfos.projectKey, projectInfos.version)
+    if (releaseNotes.length > MaxReleaseNotesLength) {
+      val maxLengthParam = Option(MaxReleaseNotesLength.toString)
+      rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.releasenotes.too.long", param = maxLengthParam)
+    } else {
+      runtimeTaskData.put(ShipItReleaseNotes, releaseNotes)
     }
   }
 
-  private def collectReleaseSummary(projectInfos: JiraProjectInfo,
-                                    jiraFacade: JiraFacade,
-                                    commonContext: CommonContext,
-                                    runtimeTaskData: mutable.HashMap[String, String]) {
-    jiraFacade.collectReleaseSummary(projectInfos.projectKey, projectInfos.version) match {
-      case Success(releaseSummary) if releaseSummary.length <= MaxReleaseSummaryLength =>
-        runtimeTaskData.put(ShipItVersionDescription, releaseSummary)
-      case Success(releaseSummary) if releaseSummary.length > MaxReleaseSummaryLength =>
-        val maxLengthParam = Option(MaxReleaseSummaryLength.toString)
-        addBuildError(commonContext, "shipit.task.jira.releasesummary.too.long", param=maxLengthParam)
-      case Failure(e) =>
-        addBuildError(commonContext, "shipit.task.jira.releasesummary.failed", param=Option(e.getMessage))
+  private def rememberReleaseSummaryInRuntime(projectInfos: JiraProjectInfo,
+                                              jiraFacade: JiraFacade,
+                                              commonContext: CommonContext,
+                                              runtimeTaskData: mutable.HashMap[String, String]) {
+    val releaseSummary = jiraFacade.collectReleaseSummary(projectInfos.projectKey, projectInfos.version)
+    if (releaseSummary.length > MaxReleaseSummaryLength) {
+      val maxLengthParam = Option(MaxReleaseSummaryLength.toString)
+      rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.releasesummary.too.long", param = maxLengthParam)
+    } else {
+      runtimeTaskData.put(ShipItVersionDescription, releaseSummary)
     }
   }
 
-  override def processRuntimeTaskData(taskDefinition: TaskDefinition, context: CommonContext): Unit = {}
+  override def processRuntimeTaskData(taskDefinition: TaskDefinition, commonContext: CommonContext): Unit = {}
 
 }
