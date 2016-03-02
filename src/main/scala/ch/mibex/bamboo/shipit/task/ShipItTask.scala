@@ -189,8 +189,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                    pluginInfo: PluginArtifactDetails) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     val context = vars.get(BambooBuildNrVariableKey)
-    log.error(">>>> BambooBuildNrVariableKey = " + context)
-    log.error(">>>> deduceBuildNr = " + deduceBuildNr)
     Option(context) match {
       case Some(buildNr) =>
         if (buildNr.getValue.nonEmpty) { // plan variable has always precedence
