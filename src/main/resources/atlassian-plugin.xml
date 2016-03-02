@@ -22,7 +22,7 @@
 
     <!-- Bamboo task -->
     <taskType key="shipit2marketplace.task" name="ShipIt to Marketplace" class="ch.mibex.bamboo.shipit.task.ShipItTask">
-        <description key="shipit.task.desc"/>
+        <description key="shipit.task.desc">Deploys your plug-ins to the Atlassian Marketplace</description>
         <category name="deployment"/>
         <configuration class="ch.mibex.bamboo.shipit.task.ShipItTaskConfigurator"/>
         <resource type="freemarker" name="edit" location="templates/task-config.ftl"/>
