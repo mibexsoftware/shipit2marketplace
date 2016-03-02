@@ -8,6 +8,8 @@ import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.CredentialsRequiredException
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
+import com.atlassian.bamboo.serialization.WhitelistedSerializable
+import com.atlassian.bamboo.task.runtime.RuntimeTaskDefinition
 import com.atlassian.bamboo.task.{RuntimeTaskDataProvider, TaskDefinition}
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
@@ -175,15 +177,24 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                               jiraFacade: JiraFacade,
                                               commonContext: CommonContext,
                                               runtimeTaskData: mutable.HashMap[String, String]) {
-    val releaseSummary = jiraFacade.collectReleaseSummary(projectInfos.projectKey, projectInfos.version)
-    if (releaseSummary.length > MaxReleaseSummaryLength) {
-      val maxLengthParam = Option(MaxReleaseSummaryLength.toString)
-      rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.releasesummary.too.long", param = maxLengthParam)
-    } else {
-      runtimeTaskData.put(ShipItVersionDescription, releaseSummary)
+    jiraFacade.collectReleaseSummary(projectInfos.projectKey, projectInfos.version) match {
+      case Some(releaseSummary) if releaseSummary.length > MaxReleaseSummaryLength =>
+        rememberError(runtimeTaskData,
+                      i18nKey = "shipit.task.jira.releasesummary.too.long",
+                      param = Option(MaxReleaseSummaryLength.toString))
+      case Some(releaseSummary) if releaseSummary.length <= MaxReleaseSummaryLength =>
+        runtimeTaskData.put(ShipItVersionDescription, releaseSummary)
+      case None =>
+        rememberError(runtimeTaskData,
+                      i18nKey = "shipit.task.jira.releasesummary.not.found",
+                      param = Option(projectInfos.version))
     }
   }
 
   override def processRuntimeTaskData(taskDefinition: TaskDefinition, commonContext: CommonContext): Unit = {}
 
+  override def processRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): Unit = {}
+
+  override def createRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): JMap[String, WhitelistedSerializable] =
+    Map[String, WhitelistedSerializable]().asJava
 }

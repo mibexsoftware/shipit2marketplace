@@ -12,13 +12,12 @@ import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.task.artifacts.{DownloaderArtifactCollector, SubscribedArtifactCollector}
 import com.atlassian.applinks.api.{ApplicationLink, ApplicationLinkResponseHandler, CredentialsRequiredException}
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
-import com.atlassian.bamboo.build.Job
 import com.atlassian.bamboo.chains.Chain
 import com.atlassian.bamboo.collections.ActionParametersMap
 import com.atlassian.bamboo.configuration.AdministrationConfigurationAccessor
 import com.atlassian.bamboo.deployments.DeploymentTaskContextHelper
 import com.atlassian.bamboo.plan._
-import com.atlassian.bamboo.plan.cache.{CachedPlanManager, ImmutableChain, ImmutableJob}
+import com.atlassian.bamboo.plan.cache.{CachedPlanManager, ImmutableJob}
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.user.{BambooAuthenticationContext, BambooUserManager}
@@ -71,15 +70,6 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     context.put(DeduceBuildNrField, java.lang.Boolean.TRUE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
-    context.get("plan") match {
-      case job: Job => createPlanVariablesIfNecessary(job.getParent)
-      case _ => // deployment project
-        context.get("relatedPlan") match {
-          case plan: ImmutableChain =>
-            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
-          case _ =>
-        }
-    }
   }
 
   private def collectArtifactsForUiList(taskContext: JMap[String, Object]) =
@@ -103,6 +93,19 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
     config
   }
 
+  // we cannot create plan variables in populateContextForEdit or populateContextForCreate because the XSRF checks
+  // do not allow us to do this (mutative operation in GET request error!):
+  //     taskDefinition.getConfiguration.get("plan") match {
+  //      case job: Job => createPlanVariablesIfNecessary(job.getParent)
+  //      case _ => // deployment project
+  //        actionParams.get("relatedPlan") match {
+  //          case plan: ImmutableChain =>
+  //            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
+  //          case _ =>
+  //        }
+  //    }
+  // and in generateTaskConfigMap we do not know the plan key; so the user has to create these plan variables
+  // manually at the moment
   private def createPlanVariablesIfNecessary(chain: Chain) {
     val variableFactory = new VariableDefinitionFactoryImpl()
     val emptyValue = null

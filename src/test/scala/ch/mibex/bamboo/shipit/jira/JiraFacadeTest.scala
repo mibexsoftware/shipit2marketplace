@@ -8,8 +8,6 @@ import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.Scope
 
-import scala.util.Success
-
 
 @RunWith(classOf[JUnitRunner])
 class JiraFacadeTest extends Specification with Mockito {
@@ -28,7 +26,7 @@ class JiraFacadeTest extends Specification with Mockito {
 
     "yield the summary for the version we are looking for" in new JiraReleaseSummaryContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.collectReleaseSummary(projectKey, "1.0.1") must_== "Datacenter compatibility"
+      jiraFacade.collectReleaseSummary(projectKey, "1.0.1") must beSome("Datacenter compatibility")
     }
 
   }
@@ -95,7 +93,6 @@ class JiraFacadeTest extends Specification with Mockito {
         |  {
         |    "self": "http://localhost/jira/rest/api/2/version/10601",
         |    "id": "10601",
-        |    "description": "Initial release for Marketplace",
         |    "name": "1.0.0",
         |    "archived": false,
         |    "released": true,
