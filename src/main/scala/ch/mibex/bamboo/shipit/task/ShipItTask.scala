@@ -189,9 +189,9 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                    pluginInfo: PluginArtifactDetails) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     Option(vars.get(BambooBuildNrVariableKey)) match {
-      case Some(buildNr) if buildNr.getValue.nonEmpty =>
+      case Some(buildNr) if buildNr.getValue.nonEmpty => // plan variable has always precedence
         buildNr.getValue.toInt
-      case Some(buildNr) if buildNr.getValue.isEmpty && deduceBuildNr =>
+      case None if deduceBuildNr => // otherwise we deduce the build number if the setting is active
         Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
         throw new TaskException(

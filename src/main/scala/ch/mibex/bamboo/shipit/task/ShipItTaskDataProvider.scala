@@ -8,8 +8,6 @@ import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.CredentialsRequiredException
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
-import com.atlassian.bamboo.serialization.WhitelistedSerializable
-import com.atlassian.bamboo.task.runtime.RuntimeTaskDefinition
 import com.atlassian.bamboo.task.{RuntimeTaskDataProvider, TaskDefinition}
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
@@ -193,8 +191,4 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
 
   override def processRuntimeTaskData(taskDefinition: TaskDefinition, commonContext: CommonContext): Unit = {}
 
-  override def processRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): Unit = {}
-
-  override def createRuntimeTaskData(runtimeTaskDefinition: RuntimeTaskDefinition, commonContext: CommonContext): JMap[String, WhitelistedSerializable] =
-    Map[String, WhitelistedSerializable]().asJava
 }
