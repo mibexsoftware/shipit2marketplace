@@ -4,6 +4,8 @@
 
 *Ship your plug-ins to the Atlassian Marketplace with one click*
 
+**Available on the [Atlassian Marketplace](https://marketplace.atlassian.com/plugins/ch.mibex.bamboo.shipit2mpac/server/overview)**
+
 This Bamboo task uploads your plug-ins to the Atlassian Marketplace. Its intended use case is that you create a release 
 in JIRA with a new build and the plug-in collects the necessary information like the release version, the 
 name and the summary from the associated JIRA version. This means that you don't have to supply all the information for
@@ -25,10 +27,10 @@ And a new release is created in the Atlassian Marketplace:
 Note that the plug-in will NOT ship your plug-in to the Marketplace if the build was not triggered from JIRA. 
 This prevents releases from "ordinary" Bamboo plan builds. The plug-in also supports Bamboo deployment projects.
 
+
 ## Installation
 
-The plug-in will probably once be available in the Atlassian Marketplace. Until then, you can download it from our 
-[Github releases page](https://github.com/mibexsoftware/shipit2marketplace/releases/latest).
+Download and install the plug-in from the [Atlassian Marketplace](https://marketplace.atlassian.com/plugins/ch.mibex.bamboo.shipit2mpac/server/overview).
 
 
 ## Configuration
