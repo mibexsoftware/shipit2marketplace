@@ -84,7 +84,7 @@ class AdminSettingsAction /*@Autowired()*/ (encryptionService: EncryptionService
                                       vendorPassword = decryptIfNecessary(vendorPassword))
     MpacFacade.withMpac(credentials) { mpac =>
       mpac.checkCredentials() foreach { error =>
-        addActionError(getText("shipit.task.config.mpac.auth.error.short"))
+        addActionError(getText(error.i18n))
       }
     }
   }

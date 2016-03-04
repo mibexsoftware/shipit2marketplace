@@ -15,10 +15,10 @@ import org.mockito.Answers._
 @RunWith(classOf[JUnitRunner])
 class MpacFacadeTest extends Specification with Mockito {
 
-  "find plug-in with unknown key" should {
+  "find plug-in by key" should {
 
-    "yield none" in new PluginNotFoundContext {
-      client.findPlugin("UNKNOWN PLUGIN") must beNone
+    "yield none if unknown" in new PluginNotFoundContext {
+      client.findPlugin("UNKNOWN PLUGIN") must beRight(None)
     }
 
   }

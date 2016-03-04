@@ -1,8 +1,10 @@
 package ch.mibex.bamboo.shipit.task
 
+import java.io.File
 import java.util.{Map => JMap}
 
-import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade, NewPluginVersion}
+import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
+import ch.mibex.bamboo.shipit.mpac.{MpacError, MpacCredentials, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.task.artifacts.{ArtifactDownloaderTaskId, ArtifactSubscriptionId, DownloaderArtifactCollector, SubscribedArtifactCollector}
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
@@ -63,25 +65,93 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     )
     val runtimeContext = getRuntimeContext(commonContext, taskDefinition)
     // report errors detected in the run-time task provider
-    Option(runtimeContext.get(RunTimeTaskError)) foreach { e =>
-      buildLogger.addErrorLogEntry(e)
-      return taskBuilder.failed().build
+    Option(runtimeContext.get(RunTimeTaskError)) match {
+      case Some(error) =>
+        buildLogger.addErrorLogEntry(error)
+        taskBuilder.failed().build
+      case None =>
+        uploadNewPluginVersion(taskContext, commonContext, runtimeContext, taskBuilder)
     }
+  }
+
+  private def uploadNewPluginVersion(taskContext: CommonTaskContext,
+                                     commonContext: CommonContext,
+                                     runtimeContext: JMap[String, String],
+                                     taskBuilder: TaskResultBuilder): TaskResult = {
+    val buildLogger = taskContext.getBuildLogger
     MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
-      val newPluginVersion = collectDataForNewPluginVersion(taskContext, commonContext, taskDefinition, mpac)
-      log.debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
-      mpac.publish(newPluginVersion) match {
-        case Right(newVersion) =>
-          buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.successfully.shipped",
-                                                            newVersion.getVersion,
-                                                            newPluginVersion.plugin.getName))
-          storeResultsLinkInfo(taskContext, newVersion)
-          taskBuilder.success.build
-        case Left(mpacUploadError) =>
-          buildLogger.addErrorLogEntry(i18nResolver.getText(mpacUploadError.i18n, mpacUploadError.reason))
+      val artifact = findArtifact(taskContext)
+      val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
+
+      mpac.findPlugin(pluginInfo.getKey) match {
+        case Left(error) =>
+          buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
+          taskBuilder.failed().build
+        case Right(plugin) if plugin.isDefined =>
+          val newPluginVersion = prepareDataForNewPluginVersion(
+            taskContext, commonContext, runtimeContext, artifact, pluginInfo, plugin.get
+          )
+          log.debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
+          mpac.publish(newPluginVersion) match {
+            case Right(newVersion) =>
+              buildLogger.addBuildLogEntry(
+                i18nResolver.getText("shipit.task.successfully.shipped",
+                newVersion.getVersion,
+                newPluginVersion.plugin.getName)
+              )
+              storeResultsLinkInfo(taskContext, newVersion)
+              taskBuilder.success.build
+            case Left(me: MpacError) =>
+              me match {
+                case e: MpacUploadError =>
+                  buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n, e.reason))
+                case _ =>
+                  buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n))
+              }
+              taskBuilder.failed().build
+          }
+        case _ =>
+          buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
           taskBuilder.failed().build
       }
     }
+  }
+
+  private def prepareDataForNewPluginVersion(taskContext: CommonTaskContext,
+                                             commonContext: CommonContext,
+                                             runtimeContext: JMap[String, String],
+                                             artifact: File,
+                                             pluginInfo: PluginArtifactDetails,
+                                             plugin: Plugin): NewPluginVersionDetails = {
+    val releaseSummary = geValueFromPlanVariableOrRuntime(
+      planVariableKey = BambooReleaseSummaryVariableKey,
+      runtimeVariableKey = ShipItVersionDescription,
+      commonContext, runtimeContext
+    )
+    val releaseNotes = geValueFromPlanVariableOrRuntime(
+      planVariableKey = BambooReleaseNotesVariableKey,
+      runtimeVariableKey = ShipItReleaseNotes,
+      commonContext, runtimeContext
+    )
+    val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
+      throw new TaskException("Public version setting not found")
+    ).toBoolean
+    val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
+      throw new TaskException("Deduce build number setting not found")
+    ).toBoolean
+    val buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo)
+    val binary = Deployment.deployableFromFile(artifact)
+    val lastPluginVersion = findLastPublishedPluginVersion(plugin).orNull
+    NewPluginVersionDetails(
+      plugin = plugin,
+      oldVersion = lastPluginVersion,
+      buildNumber = buildNumber,
+      versionNumber = pluginInfo.getVersion,
+      binary = binary,
+      isPublicVersion = isPublicVersion,
+      releaseSummary = releaseSummary,
+      releaseNotes = releaseNotes
+    )
   }
 
   // this is an additional safety check that this build has been triggered from JIRA because
@@ -118,55 +188,17 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     MpacCredentials(vendorName, vendorPassword)
   }
 
-  private def collectDataForNewPluginVersion(taskContext: CommonTaskContext,
-                                             commonContext: CommonContext,
-                                             taskDefinition: TaskDefinition,
-                                             mpacFacade: MpacFacade) = {
-    val runtimeContext = getRuntimeContext(commonContext, taskDefinition)
-    val releaseSummary = geValueFromPlanVariableOrRuntime(
-      planVariableKey = BambooReleaseSummaryVariableKey,
-      runtimeVariableKey = ShipItVersionDescription,
-      commonContext, runtimeContext
-    )
-    val releaseNotes = geValueFromPlanVariableOrRuntime(
-      planVariableKey = BambooReleaseNotesVariableKey,
-      runtimeVariableKey = ShipItReleaseNotes,
-      commonContext, runtimeContext
-    )
-    val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
-      throw new TaskException("Public version setting not found")
-    ).toBoolean
-    val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
-      throw new TaskException("Deduce build number setting not found")
-    ).toBoolean
+  private def findArtifact(taskContext: CommonTaskContext) = {
     val artifactToDeployId = Option(taskContext.getConfigurationMap.get(ArtifactToDeployKeyField)).getOrElse(
       throw new TaskException("Artifact to deploy setting not configured")
     )
-    val artifact = (artifactToDeployId match {
+    (artifactToDeployId match {
       case ArtifactSubscriptionId(artifactId, artifactName) =>
         subscribedArtifactCollector.findArtifactInSubscriptions(taskContext, artifactId)
       case ArtifactDownloaderTaskId(artifactId, artifactName, downloaderTaskId, transferId) =>
         buildArtifactCollector.findArtifactInDownloaderTask(taskContext, artifactId, downloaderTaskId, transferId)
       case _ => throw new TaskException("Artifact deploy ID format unknown")
     }).getOrElse(throw new TaskException("Artifact to deploy setting not found"))
-
-    val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-    val plugin = mpacFacade.findPlugin(pluginInfo.getKey).getOrElse(
-      throw new TaskException("Plug-in key not found in artifact")
-    )
-    val buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo)
-    val binary = Deployment.deployableFromFile(artifact)
-    val lastPluginVersion = determineLastPluginVersion(plugin).orNull
-    NewPluginVersion(
-      plugin = plugin,
-      fromVersion = lastPluginVersion,
-      buildNumber = buildNumber,
-      versionNumber = pluginInfo.getVersion,
-      binary = binary,
-      isPublicVersion = isPublicVersion,
-      releaseSummary = releaseSummary,
-      releaseNotes = releaseNotes
-    )
   }
 
   private def geValueFromPlanVariableOrRuntime(planVariableKey: String,
@@ -209,9 +241,13 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
   private def getTaskDefinitionFromBuild(commonContext: CommonContext) =
     commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
 
-  private def determineLastPluginVersion(plugin: Plugin) = plugin.getVersions.asScala match {
-    case Nil => None
-    case versions => Some(versions.maxBy(_.getBuildNumber))
-  }
+  private def findLastPublishedPluginVersion(plugin: Plugin) =
+    plugin.getVersions.asScala.filter(_.isPublished) match {
+      case Nil => None
+      case versions =>
+        val maxVersion = versions.maxBy(_.getBuildNumber)
+        log.info(s"SHIPT2MARKETPLACE: going to take version ${maxVersion.getVersion} as the basis for the new version")
+        Some(maxVersion)
+    }
 
 }
