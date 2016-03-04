@@ -12,6 +12,21 @@ import org.specs2.specification.Scope
 @RunWith(classOf[JUnitRunner])
 class JiraFacadeTest extends Specification with Mockito {
 
+  "collect release notes" should {
+
+    "separate issues by type" in {
+      val bug1 = JiraIssue(key = "TEST-1", summary = "Fixed authentication error", issueType = "Bug")
+      val feature = JiraIssue(key = "TEST-2", summary = "New help system", issueType = "Feature")
+      val improvement = JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
+      val bug2 = JiraIssue(key = "TEST-4", summary = "Database error with Oracle 9.1", issueType = "Bug")
+      JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must_==
+        """Bug fixes:<br>* Fixed authentication error<br>* Database error with Oracle 9.1
+          |<br><br>New features:<br>* New help system
+          |<br><br>Improvements:<br>* Improved colors in the UI dialogs""".stripMargin.replaceAll("\n", "")
+    }
+
+  }
+
   "collect release notes with one resolved feature and one fixed bug" should {
 
     "yield release notes with two entries for them" in new JiraReleaseNotesContext {

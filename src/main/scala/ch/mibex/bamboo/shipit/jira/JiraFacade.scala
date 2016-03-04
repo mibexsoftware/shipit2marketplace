@@ -15,7 +15,22 @@ case class JiraProjectVersion(name: String, description: Option[String])
 case class ReauthNecessary(url: String)
 
 
+object JiraFacade {
+  val issueTypeRenamings = Map("Bug" -> "Bug fixes",
+                               "Feature" -> "New features",
+                               "Improvement" -> "Improvements")
+
+  def toReleaseNotes(issues: Seq[JiraIssue]): String = {
+    issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
+      issueTypeRenamings.getOrElse(issueType, issueType) + ":<br>" +
+        issuesByType.map(i => s"* ${i.summary}").mkString("<br>")
+    } mkString "<br><br>"
+  }
+
+}
+
 class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging {
+  import JiraFacade._
 
   object ProjectVersionProtocol extends DefaultJsonProtocol {
     implicit val projectVersionFormat = jsonFormat2(JiraProjectVersion)
@@ -40,13 +55,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
         val issueType = fields("issuetype").asInstanceOf[Map[String, Any]]("name").asInstanceOf[String]
         JiraIssue(key = key, summary = summary, issueType = issueType)
       }
-    val releaseNotes = issues map { i =>
-      i.issueType match {
-        case "Bug" => s"* Bug fix: ${i.summary}"
-        case _ => s"* ${i.summary}"
-      }
-    } mkString "<br>"
-    releaseNotes
+    toReleaseNotes(issues)
   }
 
   def collectReleaseSummary(projectKey: String, projectVersion: String): Option[String] = {
