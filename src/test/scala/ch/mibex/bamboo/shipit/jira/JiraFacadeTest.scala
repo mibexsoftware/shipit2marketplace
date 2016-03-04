@@ -32,7 +32,7 @@ class JiraFacadeTest extends Specification with Mockito {
     "yield release notes with two entries for them" in new JiraReleaseNotesContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
       jiraFacade.collectReleaseNotes(projectKey, projectVersion) must_==
-        """* Think about caching strategy<br>* Bug fix: A problem which impairs or prevents the functions of the product"""
+        """Bug fixes:<br>* A problem which impairs or prevents the functions of the product<br><br>Task:<br>* Think about caching strategy"""
     }
 
   }
