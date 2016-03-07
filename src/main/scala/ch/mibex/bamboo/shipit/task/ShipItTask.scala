@@ -220,20 +220,16 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                    deduceBuildNr: Boolean,
                                    pluginInfo: PluginArtifactDetails) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
-    val context = vars.get(BambooBuildNrVariableKey)
-    Option(context) match {
-      case Some(buildNr) =>
-        if (buildNr.getValue.nonEmpty) { // plan variable has always precedence
-          buildNr.getValue.toInt
-        } else {
-          Utils.toBuildNumber(pluginInfo.getVersion)
-        }
+    vars.asScala.foreach { case (k, v) => log.error(s">>>>>>>>>>>>>>>>>>>>>>>>>> SHIPTIT2MARKETPLACE $k = $v") }
+    Option(vars.get(BambooBuildNrVariableKey)) match {
+      case Some(buildNr) if buildNr.getValue.nonEmpty => // plan variable has always precedence
+        buildNr.getValue.toInt
       case None if deduceBuildNr => // otherwise we deduce the build number if the setting is active
         Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
         throw new TaskException(
-          s"""A build number has to be specified with the plan variable
-             | '$BambooBuildNrVariableKey' if the build number deduction feature is disabled.""".stripMargin
+          s"""A build number has to be specified with the Bamboo variable '$BambooBuildNrVariableKey' if the build
+             |number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
         )
     }
   }

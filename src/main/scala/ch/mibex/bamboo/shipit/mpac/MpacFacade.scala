@@ -23,15 +23,14 @@ case class NewPluginVersionDetails(plugin: Plugin,
                                    releaseSummary: String,
                                    releaseNotes: String) {
   override def toString() =
-    s"""NewPluginVersionDetails(
-       |plugin=${plugin.getPluginKey},
+    s"""plugin=${plugin.getPluginKey},
        |baseVersion=${baseVersion.getVersion},
        |buildNumber=$buildNumber,
        |versionNumber=$versionNumber,
        |isPublicVersion=$isPublicVersion,
        |releaseSummary=$releaseSummary,
        |releaseNotes=$releaseNotes)
-     """.stripMargin.replaceAll("\n", "")
+     """.stripMargin
 }
 
 sealed trait MpacError {
