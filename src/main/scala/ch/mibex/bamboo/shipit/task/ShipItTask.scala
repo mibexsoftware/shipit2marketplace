@@ -141,7 +141,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     ).toBoolean
     NewPluginVersionDetails(
       plugin = plugin,
-      baseVersion = findBaseVersionForNewSubmission(plugin).orNull,
+      baseVersion = findBaseVersionForNewSubmission(plugin, commonContext).orNull,
       buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo),
       versionNumber = pluginInfo.getVersion,
       binary = Deployment.deployableFromFile(artifact),
