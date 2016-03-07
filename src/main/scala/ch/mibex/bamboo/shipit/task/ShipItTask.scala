@@ -139,15 +139,12 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
-    val buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo)
-    val binary = Deployment.deployableFromFile(artifact)
-    val lastPluginVersion = findLastPublishedPluginVersion(plugin).orNull
     NewPluginVersionDetails(
       plugin = plugin,
-      baseVersion = lastPluginVersion,
-      buildNumber = buildNumber,
+      baseVersion = findBaseVersionForNewSubmission(plugin).orNull,
+      buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo),
       versionNumber = pluginInfo.getVersion,
-      binary = binary,
+      binary = Deployment.deployableFromFile(artifact),
       isPublicVersion = isPublicVersion,
       releaseSummary = releaseSummary,
       releaseNotes = releaseNotes
@@ -222,7 +219,8 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     val vars = commonContext.getVariableContext.getEffectiveVariables
     vars.asScala.foreach { case (k, v) => log.error(s">>>>>>>>>>>>>>>>>>>>>>>>>> SHIPTIT2MARKETPLACE $k = $v") }
     Option(vars.get(BambooBuildNrVariableKey)) match {
-      case Some(buildNr) if buildNr.getValue.nonEmpty => // plan variable has always precedence
+      case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
+        // Bamboo variable has always precedence
         buildNr.getValue.toInt
       case None if deduceBuildNr => // otherwise we deduce the build number if the setting is active
         Utils.toBuildNumber(pluginInfo.getVersion)
@@ -237,13 +235,18 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
   private def getTaskDefinitionFromBuild(commonContext: CommonContext) =
     commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
 
-  private def findLastPublishedPluginVersion(plugin: Plugin) =
-    plugin.getVersions.asScala.filter(_.isPublished) match {
-      case Nil => None
-      case versions =>
-        val maxVersion = versions.maxBy(_.getBuildNumber)
-        log.info(s"SHIPT2MARKETPLACE: going to take version ${maxVersion.getVersion} as the basis for the new version")
-        Some(maxVersion)
+  private def findBaseVersionForNewSubmission(plugin: Plugin, commonContext: CommonContext) = {
+    val vars = commonContext.getVariableContext.getEffectiveVariables
+    Option(vars.get(BambooPluginBaseVersionVariableKey)) match {
+      case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
+        // Bamboo variable has always precedence
+        plugin.getVersions.asScala.find(_.getVersion == baseVersion.getValue)
+      case _ =>
+        plugin.getVersions.asScala.filter(_.isPublished) match {
+          case Nil => None
+          case versions => Some(versions.maxBy(_.getBuildNumber))
+        }
     }
+  }
 
 }
