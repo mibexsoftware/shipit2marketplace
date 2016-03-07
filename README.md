@@ -38,15 +38,22 @@ Download and install the plug-in from the [Atlassian Marketplace](https://market
 You can override the build number, the release summary and the release notes with Bamboo plan variables. Overriding
 the build number is useful if you do not want the plug-in to deduce the build number from the plug-in's version number 
 (e. g., a plug-in's version 1.2.3 results in the deduced build number 100200300). To override this behaviour, just pass 
-the build variable "bamboo.shipit2mpac.buildnr" from the JIRA release dialog:
+the build variable "shipit2mpac.buildnr" from the JIRA release dialog:
 
 ![Screenshot Bamboo variable to override the build number](doc/build-variable.png)
 
 Overriding the release summary and release notes can be useful if you don't want to take the summary from the JIRA version
 description and the deduced release notes from the resolved JIRA issues. Use the following two plan variables to achieve this:
 
-* bamboo.shipit2mpac.release.notes
-* bamboo.shipit2mpac.release.summary
+* shipit2mpac.release.notes
+* shipit2mpac.release.summary
+
+The plug-in uses the last published plug-in version with the highest build number as the base version for the new Marketplace
+submission. This means that version-specific content like application compatibility is copied from that base version to the
+newly created plug-in version. If you want to use a different plug-in version as your base version, you can override the
+described behaviour with this Bamboo variable:
+
+* shipit2mpac.plugin.base.version
 
 The Bamboo task requires that you configure an artifact to deploy as your new plug-in version. 
 See [this Atlassian page](https://confluence.atlassian.com/display/BAMBOO058/Sharing+artifacts) on how to achieve this.
