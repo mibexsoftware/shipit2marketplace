@@ -106,22 +106,22 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
   //    }
   // and in generateTaskConfigMap we do not know the plan key; so the user has to create these plan variables
   // manually at the moment
-  private def createPlanVariablesIfNecessary(chain: Chain) {
-    val variableFactory = new VariableDefinitionFactoryImpl()
-    val emptyValue = null
-    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
-      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
-      variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
-    }
-    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
-      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
-      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
-    }
-    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
-      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
-      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
-    }
-  }
+  //  private def createPlanVariablesIfNecessary(chain: Chain) {
+  //    val variableFactory = new VariableDefinitionFactoryImpl()
+  //    val emptyValue = null
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
+  //      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
+  //    }
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
+  //      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
+  //    }
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
+  //      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
+  //    }
+  //  }
 
   override def populateContextForView(context: JMap[String, AnyRef], taskDefinition: TaskDefinition): Unit = {
     context.put(UserNameField, taskDefinition.getConfiguration.get(UserNameField))

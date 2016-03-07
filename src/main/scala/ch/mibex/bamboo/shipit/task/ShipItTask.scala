@@ -217,7 +217,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                    deduceBuildNr: Boolean,
                                    pluginInfo: PluginArtifactDetails) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
-    vars.asScala.foreach { case (k, v) => log.error(s">>>>>>>>>>>>>>>>>>>>>>>>>> SHIPTIT2MARKETPLACE $k = $v") }
     Option(vars.get(BambooBuildNrVariableKey)) match {
       case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
         // Bamboo variable has always precedence
