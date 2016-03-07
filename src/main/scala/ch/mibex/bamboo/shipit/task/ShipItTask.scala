@@ -104,7 +104,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
             case Left(me: MpacError) =>
               me match {
                 case e: MpacUploadError =>
-                  buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n, e.reason))
+                  buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n, e.reason, newPluginVersion.toString()))
                 case _ =>
                   buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n))
               }
@@ -144,7 +144,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     val lastPluginVersion = findLastPublishedPluginVersion(plugin).orNull
     NewPluginVersionDetails(
       plugin = plugin,
-      oldVersion = lastPluginVersion,
+      baseVersion = lastPluginVersion,
       buildNumber = buildNumber,
       versionNumber = pluginInfo.getVersion,
       binary = binary,

@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 
 // there are three ways to define artifacts in Bamboo:
@@ -59,7 +58,7 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
   def buildArtifactUiList(taskDefinitions: Seq[TaskDefinition]): Seq[WwSelectOption] = {
     case class ArtifactInfo(id: Long, key: String)
 
-    val artifactsToDeploy = ListBuffer[WwSelectOption]()
+    var artifactsToDeploy = Vector.empty[WwSelectOption]
     filterEnabledDownloaderTasks(taskDefinitions) foreach { t =>
       val sourcePlanKey = ArtifactDownloaderTaskConfigurationHelper.getSourcePlanKey(t.getConfiguration)
       val groupName = i18nResolver.getText("shipit.task.config.individual.artifacts")
@@ -73,11 +72,11 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
             val artifactName = s"$sourcePlanKey: ${artifactDefinition.getName}"
             val transferId = ArtifactDownloaderTaskConfigurationHelper.getIndexFromKey(artifactInfo.key)
             val selectedValue = ArtifactDownloaderTaskId(artifactDefinition, t, transferId)
-            artifactsToDeploy += new WwSelectOption(artifactName, groupName, selectedValue.toString)
+            artifactsToDeploy :+= new WwSelectOption(artifactName, groupName, selectedValue.toString)
           }
         })
     }
-    artifactsToDeploy.toList
+    artifactsToDeploy
   }
 
   private def filterEnabledDownloaderTasks(taskDefinitions: Seq[TaskDefinition])=

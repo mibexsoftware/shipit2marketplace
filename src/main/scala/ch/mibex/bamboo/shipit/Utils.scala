@@ -59,10 +59,10 @@ object Utils {
   }
 
   def findMostRecentMatchingFile(filePattern: String, localPath: File) = {
-    val rawArtifacts = ListBuffer[File]()
+    var rawArtifacts = Vector.empty[File]
     val namesVisitor = new FileVisitor(localPath) {
       override def visitFile(file: File): Unit = {
-        rawArtifacts += file
+        rawArtifacts :+= file
       }
     }
     namesVisitor.visitFilesThatMatch(filePattern)

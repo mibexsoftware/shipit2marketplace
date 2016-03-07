@@ -15,13 +15,24 @@ import scala.collection.JavaConverters._
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
 case class NewPluginVersionDetails(plugin: Plugin,
-                                   oldVersion: PluginVersion,
+                                   baseVersion: PluginVersion,
                                    buildNumber: Int,
                                    versionNumber: String,
                                    binary: Deployment,
                                    isPublicVersion: Boolean,
                                    releaseSummary: String,
-                                   releaseNotes: String)
+                                   releaseNotes: String) {
+  override def toString() =
+    s"""NewPluginVersionDetails(
+       |plugin=${plugin.getPluginKey},
+       |baseVersion=${baseVersion.getVersion},
+       |buildNumber=$buildNumber,
+       |versionNumber=$versionNumber,
+       |isPublicVersion=$isPublicVersion,
+       |releaseSummary=$releaseSummary,
+       |releaseNotes=$releaseNotes)
+     """.stripMargin.replaceAll("\n", "")
+}
 
 sealed trait MpacError {
   def i18n: String
@@ -84,18 +95,18 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
     val versionBuilder =
       PluginVersionUpdate
-        .copyNewVersion(version.plugin, version.oldVersion, version.buildNumber, version.versionNumber, version.binary)
+        .copyNewVersion(version.plugin, version.baseVersion, version.buildNumber, version.versionNumber, version.binary)
         .published(version.isPublicVersion)
         .summary(UPMOption.option(version.releaseSummary))
         .releaseNotes(UPMOption.some(version.releaseNotes))
 
     // we cannot just take all links because some of them are internal Marketplace links
     // and because there are duplicate links which result in an error when uploading a new version
-    for (l <- version.oldVersion.getLinks.getItems.asScala if LinksToCopy contains l.getRel) {
+    for (l <- version.baseVersion.getLinks.getItems.asScala if LinksToCopy contains l.getRel) {
       versionBuilder.addLink(l.getRel, l.getHref)
     }
 
-    for (compat <- version.oldVersion.getCompatibilities.asScala) {
+    for (compat <- version.baseVersion.getCompatibilities.asScala) {
       val maxVersion = compat.getMax.getVersion
       val minVersion = compat.getMin.getVersion
       val applicationName = ApplicationKey.valueOf(compat.getApplicationName)
