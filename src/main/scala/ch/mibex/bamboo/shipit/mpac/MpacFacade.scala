@@ -1,30 +1,30 @@
 package ch.mibex.bamboo.shipit.mpac
 
+import java.io.File
+
 import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConnectionError, MpacUploadError}
 import ch.mibex.bamboo.shipit.{Logging, Utils}
-import com.atlassian.marketplace.client.HttpConfiguration.Credentials
-import com.atlassian.marketplace.client.api.PluginVersionUpdate.Deployment
-import com.atlassian.marketplace.client.api.{ApplicationKey, PluginDetailQuery, PluginVersionUpdate}
-import com.atlassian.marketplace.client.impl.{AbstractMarketplaceClient, DefaultMarketplaceClient}
-import com.atlassian.marketplace.client.model.{Plugin, PluginVersion}
-import com.atlassian.marketplace.client.{HttpConfiguration, MarketplaceClient, MpacException}
-import com.atlassian.upm.api.util.{Option => UPMOption}
-
-import scala.collection.JavaConverters._
+import com.atlassian.fugue
+import com.atlassian.marketplace.client.api._
+import com.atlassian.marketplace.client.http.HttpConfiguration
+import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
+import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
+import com.atlassian.marketplace.client.model._
+import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
-case class NewPluginVersionDetails(plugin: Plugin,
-                                   baseVersion: PluginVersion,
+case class NewPluginVersionDetails(plugin: Addon,
+                                   baseVersion: AddonVersion,
                                    buildNumber: Int,
                                    versionNumber: String,
-                                   binary: Deployment,
+                                   binary: File,
                                    isPublicVersion: Boolean,
                                    releaseSummary: String,
                                    releaseNotes: String) {
   override def toString() =
-    s"""plugin=${plugin.getPluginKey},
-       |baseVersion=${baseVersion.getVersion},
+    s"""plugin=${plugin.getKey},
+       |baseVersion=${baseVersion.getName},
        |buildNumber=$buildNumber,
        |versionNumber=$versionNumber,
        |isPublicVersion=$isPublicVersion,
@@ -59,14 +59,14 @@ object MpacFacade {
     val c = new Credentials(credentials.vendorUserName, credentials.vendorPassword)
     val httpConfig = HttpConfiguration
       .builder()
-      .credentials(UPMOption.some(c))
+      .credentials(fugue.Option.some(c))
       .build()
-    val client = new DefaultMarketplaceClient(AbstractMarketplaceClient.DEFAULT_SERVER_URI, httpConfig)
+    val client = new DefaultMarketplaceClient(DefaultMarketplaceClient.DEFAULT_SERVER_URI, httpConfig)
 
     try {
       block(new MpacFacade(client))
     } finally {
-      client.destroy()
+      client.close()
     }
   }
 
@@ -76,10 +76,14 @@ object MpacFacade {
 class MpacFacade(client: MarketplaceClient) extends Logging {
   private final val LinksToCopy = List("issue-tracker", "documentation", "license", "eula")
 
-  def findPlugin(pluginKey: String): Either[MpacError, Option[Plugin]] = {
+  def getVersion(pluginKey: String, version: Option[String] = None): Either[MpacError, Option[AddonVersion]] = {
     try {
-      val criteria = PluginDetailQuery.builder(pluginKey).build()
-      Right(client.plugins().get(criteria))
+      val criteria = AddonVersionsQuery.any()
+      val specifier = version match {
+        case Some(v) => AddonVersionSpecifier.versionName(v)
+        case None => AddonVersionSpecifier.latest()
+      }
+      Right(client.addons().getVersion(pluginKey, specifier, criteria))
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
@@ -90,30 +94,54 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     }
   }
 
-  def publish(version: NewPluginVersionDetails): Either[MpacError, PluginVersion] = {
+  def findPlugin(pluginKey: String): Either[MpacError, Option[Addon]] = {
+    try {
+      val criteria = AddonQuery.any()
+      Right(client.addons().getByKey(pluginKey, criteria))
+    } catch {
+      case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
+        Left(MpacAuthenticationError())
+      case e: MpacException.ConnectionFailure =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
+        Left(MpacConnectionError())
+    }
+  }
 
-    val versionBuilder =
-      PluginVersionUpdate
-        .copyNewVersion(version.plugin, version.baseVersion, version.buildNumber, version.versionNumber, version.binary)
-        .published(version.isPublicVersion)
-        .summary(UPMOption.option(version.releaseSummary))
-        .releaseNotes(UPMOption.some(version.releaseNotes))
+  def publish(newVersionDetails: NewPluginVersionDetails): Either[MpacError, AddonVersion] = {
+
+//    val versionBuilder =
+//      AddonVersionU
+//        .copyNewVersion(newVersionDetails.plugin, newVersionDetails.baseVersion, newVersionDetails.buildNumber, newVersionDetails.versionNumber, newVersionDetails.binary)
+//        .published(newVersionDetails.isPublicVersion)
+//        .summary(UPMOption.option(newVersionDetails.releaseSummary))
+//        .releaseNotes(UPMOption.some(newVersionDetails.releaseNotes))
 
     // we cannot just take all links because some of them are internal Marketplace links
     // and because there are duplicate links which result in an error when uploading a new version
-    for (l <- version.baseVersion.getLinks.getItems.asScala if LinksToCopy contains l.getRel) {
-      versionBuilder.addLink(l.getRel, l.getHref)
-    }
+//    for (l <- newVersionDetails.baseVersion.getLinks.getItems.asScala if LinksToCopy contains l.getRel) {
+//      versionBuilder.addLink(l.getRel, l.getHref)
+//    }
+//
+//    for (compat <- newVersionDetails.baseVersion.getCompatibilities.asScala) {
+//      val maxVersion = compat.getMax.getVersion
+//      val minVersion = compat.getMin.getVersion
+//      val applicationName = ApplicationKey.valueOf(compat.getApplicationName)
+//      versionBuilder.compatibility(applicationName, minVersion, maxVersion)
+//    }
 
-    for (compat <- version.baseVersion.getCompatibilities.asScala) {
-      val maxVersion = compat.getMax.getVersion
-      val minVersion = compat.getMin.getVersion
-      val applicationName = ApplicationKey.valueOf(compat.getApplicationName)
-      versionBuilder.compatibility(applicationName, minVersion, maxVersion)
-    }
+    val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
+    val addonVersion = ModelBuilders
+      .addonVersion(newVersionDetails.baseVersion)
+      .releaseSummary(fugue.Option.some(newVersionDetails.releaseNotes))
+      .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseSummary)))
+      .buildNumber(newVersionDetails.buildNumber)
+      .artifact(fugue.Option.some(artifactId))
+      .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
+      .build()
 
     try {
-      Right(client.plugins().putVersion(versionBuilder.build()))
+      Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion))
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)
@@ -134,7 +162,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
   def checkCredentials(): Option[MpacError] = {
     try {
       // isReachable does not do authentication, so I just use one of the provided API calls
-      client.applications().findAll()
+      val vendorQuery = VendorQuery.builder().forThisUserOnly(true).build()
+      client.vendors().find(vendorQuery)
       None
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
@@ -146,7 +175,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     }
   }
 
-  implicit def asScalaOption[T](upmOpt: com.atlassian.upm.api.util.Option[T]): Option[T] =
+  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
     if (upmOpt.isDefined) Some(upmOpt.get)
     else None
 
