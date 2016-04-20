@@ -7,13 +7,14 @@ import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.task.artifacts.{ArtifactDownloaderTaskId, ArtifactSubscriptionId, DownloaderArtifactCollector, SubscribedArtifactCollector}
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
+import com.atlassian.bamboo.build.logger.BuildLogger
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
 import com.atlassian.bamboo.deployments.projects.service.DeploymentProjectService
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.{DependencyTriggerReason, TriggerReason}
-import com.atlassian.marketplace.client.model.{AddonVersion, Addon}
+import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.plugin.tool.{PluginArtifactDetails, PluginInfoTool}
 import com.atlassian.sal.api.message.I18nResolver
@@ -69,11 +70,11 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
         buildLogger.addErrorLogEntry(error)
         taskBuilder.failed().build
       case None =>
-        uploadNewPluginVersion(taskContext, commonContext, runtimeContext, taskBuilder)
+        createNewPluginVersion(taskContext, commonContext, runtimeContext, taskBuilder)
     }
   }
 
-  private def uploadNewPluginVersion(taskContext: CommonTaskContext,
+  private def createNewPluginVersion(taskContext: CommonTaskContext,
                                      commonContext: CommonContext,
                                      runtimeContext: JMap[String, String],
                                      taskBuilder: TaskResultBuilder): TaskResult = {
@@ -81,7 +82,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-
       mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
@@ -96,33 +96,40 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                 taskContext, commonContext, runtimeContext, artifact, baseVersion, pluginInfo, plugin
               )
               debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
-              mpac.publish(newPluginVersion) match {
-                case Right(newVersion) =>
-                  buildLogger.addBuildLogEntry(
-                    i18nResolver.getText("shipit.task.successfully.shipped",
-                      newVersion.getName,
-                      newPluginVersion.plugin.getName)
-                  )
-                  storeResultsLinkInfo(taskContext, newVersion)
-                  taskBuilder.success.build
-                case Left(me: MpacError) =>
-                  me match {
-                    case e: MpacUploadError =>
-                      buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n, e.reason, newPluginVersion.toString()))
-                    case _ =>
-                      buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n))
-                  }
-                  taskBuilder.failed().build
-              }
+              uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
               taskBuilder.failed().build
           }
-
         case _ =>
           buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
           taskBuilder.failed().build
       }
+    }
+  }
+
+  private def uploadNewPluginVersion(taskContext: CommonTaskContext,
+                                     taskBuilder: TaskResultBuilder,
+                                     buildLogger: BuildLogger,
+                                     mpac: MpacFacade,
+                                     newPluginVersion: NewPluginVersionDetails): TaskResult = {
+    mpac.publish(newPluginVersion) match {
+      case Right(newVersion) =>
+        buildLogger.addBuildLogEntry(
+          i18nResolver.getText("shipit.task.successfully.shipped",
+            newVersion.getName,
+            newPluginVersion.plugin.getName)
+        )
+        storeResultsLinkInfo(taskContext, newVersion)
+        taskBuilder.success.build
+      case Left(me: MpacError) =>
+        me match {
+          case e: MpacUploadError =>
+            buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n, e.reason, newPluginVersion.toString()))
+          case _ =>
+            buildLogger.addErrorLogEntry(i18nResolver.getText(me.i18n))
+        }
+        taskBuilder.failed().build
     }
   }
 
@@ -175,7 +182,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     commonTaskContext match {
       case t: TaskContext if newVersion.getArtifactInfo.isDefined =>
         val customBuildData = t.getBuildContext.getBuildResult.getCustomBuildData
-        customBuildData.put(ResultLinkPluginBinaryUrl, newVersion.getArtifactInfo.get().getSelfUri.toString)
+        customBuildData.put(ResultLinkPluginBinaryUrl, newVersion.getArtifactInfo.get().getBinaryUri.toString)
         customBuildData.put(ResultLinkPluginVersion, newVersion.getName)
       case _ => // do not store the link as it is a deployment project where this is not supported yet
     }
@@ -231,12 +238,12 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
         // Bamboo variable has always precedence
         buildNr.getValue.toInt
-      case None if deduceBuildNr => // otherwise we deduce the build number if the setting is active
+      case _ if deduceBuildNr => // otherwise we deduce the build number if the setting is active
         Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
         throw new TaskException(
-          s"""A build number has to be specified with the Bamboo variable '$BambooBuildNrVariableKey' if the build
-             |number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
+            s"""A build number has to be specified with the Bamboo variable '$BambooBuildNrVariableKey' if the build
+               |number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
         )
     }
   }
