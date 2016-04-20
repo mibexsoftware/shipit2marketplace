@@ -3,7 +3,7 @@ package ch.mibex.bamboo.shipit.task
 import java.util.concurrent.Callable
 import java.util.{Map => JMap}
 
-import ch.mibex.bamboo.shipit.jira.JiraFacade
+import ch.mibex.bamboo.shipit.jira.{JiraFacade, JiraIssue}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.CredentialsRequiredException
@@ -163,12 +163,7 @@ class ShipItTaskDataProvider @Autowired()(mpacCredentialsDao: AdminSettingsDao,
                                             commonContext: CommonContext,
                                             runtimeTaskData: mutable.HashMap[String, String]) {
     val releaseNotes = jiraFacade.collectReleaseNotes(projectInfos.projectKey, projectInfos.version)
-    if (releaseNotes.length > MaxReleaseNotesLength) {
-      val maxLengthParam = Option(MaxReleaseNotesLength.toString)
-      rememberError(runtimeTaskData, i18nKey = "shipit.task.jira.releasenotes.too.long", param = maxLengthParam)
-    } else {
-      runtimeTaskData.put(ShipItReleaseNotes, releaseNotes)
-    }
+    runtimeTaskData.put(ShipItReleaseNotes, releaseNotes)
   }
 
   private def rememberReleaseSummaryInRuntime(projectInfos: JiraProjectInfo,

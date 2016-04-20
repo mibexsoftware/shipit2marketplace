@@ -22,7 +22,7 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    isPublicVersion: Boolean,
                                    releaseSummary: String,
                                    releaseNotes: String) {
-  override def toString() =
+  override def toString =
     s"""plugin=${plugin.getKey},
        |baseVersion=${baseVersion.getName},
        |buildNumber=$buildNumber,
@@ -74,7 +74,6 @@ object MpacFacade {
 
 
 class MpacFacade(client: MarketplaceClient) extends Logging {
-  private final val LinksToCopy = List("issue-tracker", "documentation", "license", "eula")
 
   def getVersion(pluginKey: String, version: Option[String] = None): Either[MpacError, Option[AddonVersion]] = {
     try {
@@ -109,34 +108,15 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
   }
 
   def publish(newVersionDetails: NewPluginVersionDetails): Either[MpacError, AddonVersion] = {
-
-//    val versionBuilder =
-//      AddonVersionU
-//        .copyNewVersion(newVersionDetails.plugin, newVersionDetails.baseVersion, newVersionDetails.buildNumber, newVersionDetails.versionNumber, newVersionDetails.binary)
-//        .published(newVersionDetails.isPublicVersion)
-//        .summary(UPMOption.option(newVersionDetails.releaseSummary))
-//        .releaseNotes(UPMOption.some(newVersionDetails.releaseNotes))
-
-    // we cannot just take all links because some of them are internal Marketplace links
-    // and because there are duplicate links which result in an error when uploading a new version
-//    for (l <- newVersionDetails.baseVersion.getLinks.getItems.asScala if LinksToCopy contains l.getRel) {
-//      versionBuilder.addLink(l.getRel, l.getHref)
-//    }
-//
-//    for (compat <- newVersionDetails.baseVersion.getCompatibilities.asScala) {
-//      val maxVersion = compat.getMax.getVersion
-//      val minVersion = compat.getMin.getVersion
-//      val applicationName = ApplicationKey.valueOf(compat.getApplicationName)
-//      versionBuilder.compatibility(applicationName, minVersion, maxVersion)
-//    }
-
+    // see https://docs.atlassian.com/marketplace-client-java/2.0.0-m4/apidocs/index.html
     val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
     val addonVersion = ModelBuilders
-      .addonVersion(newVersionDetails.baseVersion)
-      .releaseSummary(fugue.Option.some(newVersionDetails.releaseNotes))
-      .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseSummary)))
+      .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
+      .releaseSummary(fugue.Option.some(newVersionDetails.releaseSummary))
+      .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseNotes)))
       .buildNumber(newVersionDetails.buildNumber)
       .artifact(fugue.Option.some(artifactId))
+      .name(newVersionDetails.versionNumber)
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
       .build()
 
@@ -161,7 +141,6 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
   def checkCredentials(): Option[MpacError] = {
     try {
-      // isReachable does not do authentication, so I just use one of the provided API calls
       val vendorQuery = VendorQuery.builder().forThisUserOnly(true).build()
       client.vendors().find(vendorQuery)
       None

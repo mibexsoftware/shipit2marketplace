@@ -95,7 +95,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               val newPluginVersion = prepareDataForNewPluginVersion(
                 taskContext, commonContext, runtimeContext, artifact, baseVersion, pluginInfo, plugin
               )
-              log.debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
+              debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
               mpac.publish(newPluginVersion) match {
                 case Right(newVersion) =>
                   buildLogger.addBuildLogEntry(
@@ -175,7 +175,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     commonTaskContext match {
       case t: TaskContext if newVersion.getArtifactInfo.isDefined =>
         val customBuildData = t.getBuildContext.getBuildResult.getCustomBuildData
-        customBuildData.put(ResultLinkPluginBinaryUrl, newVersion.getArtifactInfo.get().toString)
+        customBuildData.put(ResultLinkPluginBinaryUrl, newVersion.getArtifactInfo.get().getSelfUri.toString)
         customBuildData.put(ResultLinkPluginVersion, newVersion.getName)
       case _ => // do not store the link as it is a deployment project where this is not supported yet
     }
