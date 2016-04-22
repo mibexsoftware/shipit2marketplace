@@ -20,9 +20,15 @@ class JiraFacadeTest extends Specification with Mockito {
       val improvement = JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
       val bug2 = JiraIssue(key = "TEST-4", summary = "Database error with Oracle 9.1", issueType = "Bug")
       JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must_==
-        """Bug fixes:<br>* Fixed authentication error<br>* Database error with Oracle 9.1
-          |<br><br>New features:<br>* New help system
-          |<br><br>Improvements:<br>* Improved colors in the UI dialogs""".stripMargin.replaceAll("\n", "")
+        """Bug fixes:
+          |* Fixed authentication error
+          |* Database error with Oracle 9.1
+          |
+          |New features:
+          |* New help system
+          |
+          |Improvements:
+          |* Improved colors in the UI dialogs""".stripMargin
     }
 
   }
@@ -32,7 +38,68 @@ class JiraFacadeTest extends Specification with Mockito {
     "yield release notes with two entries for them" in new JiraReleaseNotesContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
       jiraFacade.collectReleaseNotes(projectKey, projectVersion) must_==
-        """Bug fixes:<br>* A problem which impairs or prevents the functions of the product<br><br>Task:<br>* Think about caching strategy"""
+        """Bug fixes:
+          |* A problem which impairs or prevents the functions of the product
+          |
+          |Task:
+          |* Think about caching strategy""".stripMargin
+    }
+
+  }
+
+  "release notes with more than 1000 characters" should {
+
+    "be shortened" in new JiraReleaseSummaryContext {
+      val bug1 = JiraIssue(key = "TEST-1", summary = "Fixed authentication error", issueType = "Bug")
+      val bug2 = JiraIssue(
+        key = "TEST-4",
+        summary = """ORA-00001: unique constraint (string.string) violated:
+                    |An UPDATE or INSERT statement attempted to insert a duplicate key. For Trusted Oracle configured in
+                    |DBMS MAC mode, you may see this message if a duplicate entry exists at a different level.""".stripMargin,
+        issueType = "Bug"
+      )
+      val bug3 = JiraIssue(
+        key = "TEST-5",
+        summary = """ORA-00017: session requested to set trace event:
+                    |The current session was requested to set a trace event by another session.""".stripMargin,
+        issueType = "Bug"
+      )
+      val bug4 = JiraIssue(
+        key = "TEST-6",
+        summary =
+          """ORA-00023: session references process private memory; cannot detach session:
+            |A session may contain references to process memory (PGA) if it has an open network connection,
+            |a very large context area, or operating system privileges. To allow the detach, it may be necessary
+            |to close the session's database links and/or cursors. Detaching a session with operating system privileges
+            |is always disallowed.""".stripMargin,
+        issueType = "Bug"
+      )
+      val bug5 = JiraIssue(
+        key = "TEST-7",
+        summary =
+          """ORA-00031: session marked for kill:
+            |The session specified in an ALTER SYSTEM KILL SESSION command cannot be killed immediately
+            |(because it is rolling back or blocked on a network operation), but it has been marked for kill.
+            |This means it will be killed as soon as possible after its current uninterruptable operation is done.""".stripMargin,
+        issueType = "Bug"
+      )
+      JiraFacade.toReleaseNotes(List(bug1, bug2, bug3, bug4, bug5)) must_==
+        """Bug fixes:
+          |* Fixed authentication error
+          |* ORA-00001: unique constraint (string.string) violated:
+          |An UPDATE or INSERT statement attempted to insert a duplicate key. For Trusted Oracle configured in
+          |DBMS MAC mode, you may see this message if a duplicate entry exists at a different level.
+          |* ORA-00017: session requested to set trace event:
+          |The current session was requested to set a trace event by another session.
+          |* ORA-00023: session references process private memory; cannot detach session:
+          |A session may contain references to process memory (PGA) if it has an open network connection,
+          |a very large context area, or operating system privileges. To allow the detach, it may be necessary
+          |to close the session's database links and/or cursors. Detaching a session with operating system privileges
+          |is always disallowed.
+          |* ORA-00031: session marked for kill:
+          |The session specified in an ALTER SYSTEM KILL SESSION command cannot be killed immediately
+          |(because it is rolling back or blocked on a n...
+          |* ...""".stripMargin
     }
 
   }

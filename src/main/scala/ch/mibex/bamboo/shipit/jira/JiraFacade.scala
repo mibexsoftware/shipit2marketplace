@@ -1,5 +1,6 @@
 package ch.mibex.bamboo.shipit.jira
 
+import ch.mibex.bamboo.shipit.Constants.MaxReleaseNotesLength
 import ch.mibex.bamboo.shipit.{Logging, Utils}
 import com.atlassian.applinks.api.{ApplicationLinkRequestFactory, ApplicationLinkResponseHandler}
 import com.atlassian.sal.api.net.Request
@@ -16,15 +17,22 @@ case class ReauthNecessary(url: String)
 
 
 object JiraFacade {
-  val issueTypeRenamings = Map("Bug" -> "Bug fixes",
-                               "Feature" -> "New features",
-                               "Improvement" -> "Improvements")
+  val issueTypeRenamings = Map(
+    "Bug" -> "Bug fixes",
+    "Feature" -> "New features",
+    "Improvement" -> "Improvements"
+  )
 
   def toReleaseNotes(issues: Seq[JiraIssue]): String = {
-    issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
-      issueTypeRenamings.getOrElse(issueType, issueType) + ":<br>" +
-        issuesByType.map(i => s"* ${i.summary}").mkString("<br>")
-    } mkString "<br><br>"
+    var releaseNotes = issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
+      issueTypeRenamings.getOrElse(issueType, issueType) + ":\n" +
+        issuesByType.map(i => s"* ${i.summary}").mkString("\n")
+    } mkString "\n\n"
+    if (releaseNotes.length > MaxReleaseNotesLength) {
+      val abbreviation = "...\n* ..."
+      releaseNotes = releaseNotes.substring(0, MaxReleaseNotesLength - 1 - abbreviation.length) + abbreviation
+    }
+    releaseNotes
   }
 
 }
@@ -45,7 +53,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
     val jql = s"project=$projectKey+AND+status+in+(resolved,closed,done)+and+fixVersion=$projectVersion"
     val request = requestFactory.createRequest(GET, s"rest/api/2/search?jql=$jql")
     val response = request.execute()
-    log.debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
+    debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
     val json = Utils.mapFromJson(response)
     val issues = for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])
       yield {
@@ -61,7 +69,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   def collectReleaseSummary(projectKey: String, projectVersion: String): Option[String] = {
     val request = requestFactory.createRequest(GET, s"rest/api/2/project/$projectKey/versions")
     val response = request.execute()
-    log.debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
+    debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
     import ProjectVersionProtocol._
     response
       .parseJson

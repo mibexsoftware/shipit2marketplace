@@ -21,7 +21,7 @@
     <properties>
         <bamboo.version>5.7.0</bamboo.version>
         <bamboo.data.version>3.2.2</bamboo.data.version>
-        <bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>
+        <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
         <amps.version>6.2.1</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.11.4</scala.version> <!-- mpac forces us to use Scala 2.11 -->
@@ -148,7 +148,7 @@
                 <configuration>
                     <productVersion>${bamboo.version}</productVersion>
                     <productDataVersion>${bamboo.data.version}</productDataVersion>
-                    <productDataPath>${bamboo.data.path}</productDataPath>
+                    <!--<productDataPath>${bamboo.data.path}</productDataPath>-->
                     <enableFastdev>false</enableFastdev>
                     <enableQuickReload>true</enableQuickReload>
                     <extractDependencies>false</extractDependencies>
@@ -216,9 +216,10 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.atlassian.upm</groupId>
-            <artifactId>mpac-client</artifactId>
-            <version>2.20.5</version>
+            <groupId>com.atlassian.marketplace</groupId>
+            <artifactId>marketplace-client-java</artifactId>
+            <version>2.0.0-m6</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.atlassian.upm</groupId>
