@@ -22,7 +22,7 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    isPublicVersion: Boolean,
                                    releaseSummary: String,
                                    releaseNotes: String) {
-  override def toString =
+  override def toString: String =
     s"""plugin=${plugin.getKey},
        |baseVersion=${baseVersion.getName},
        |buildNumber=$buildNumber,

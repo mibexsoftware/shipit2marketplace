@@ -25,11 +25,11 @@ object JiraFacade {
 
   def toReleaseNotes(issues: Seq[JiraIssue]): String = {
     var releaseNotes = issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
-      issueTypeRenamings.getOrElse(issueType, issueType) + ":<br>" +
-        issuesByType.map(i => s"* ${i.summary}").mkString("<br>")
-    } mkString "<br><br>"
+      issueTypeRenamings.getOrElse(issueType, issueType) + ":\n" +
+        issuesByType.map(i => s"* ${i.summary}").mkString("\n")
+    } mkString "\n\n"
     if (releaseNotes.length > MaxReleaseNotesLength) {
-      val abbreviation = "...<br>* ..."
+      val abbreviation = "...\n* ..."
       releaseNotes = releaseNotes.substring(0, MaxReleaseNotesLength - 1 - abbreviation.length) + abbreviation
     }
     releaseNotes
