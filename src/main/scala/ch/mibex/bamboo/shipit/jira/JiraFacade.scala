@@ -27,7 +27,7 @@ object JiraFacade {
     var releaseNotes = issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
       issueTypeRenamings.getOrElse(issueType, issueType) + ":<p>" +
         issuesByType.map(i => s"* ${i.summary}").mkString("<p>")
-    } mkString "<p>"
+    } mkString "<p><p>"
     if (releaseNotes.length > MaxReleaseNotesLength) {
       val abbreviation = "...<p>* ..."
       releaseNotes = releaseNotes.substring(0, MaxReleaseNotesLength - 1 - abbreviation.length) + abbreviation
