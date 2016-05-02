@@ -9,6 +9,7 @@ import com.atlassian.marketplace.client.api._
 import com.atlassian.marketplace.client.http.HttpConfiguration
 import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
+import com.atlassian.marketplace.client.model.ModelBuilders.AddonVersionReleasePropertiesBuilder
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 
@@ -24,12 +25,12 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    releaseNotes: String) {
   override def toString: String =
     s"""plugin=${plugin.getKey},
-       |baseVersion=${baseVersion.getName},
-       |buildNumber=$buildNumber,
-       |versionNumber=$versionNumber,
-       |isPublicVersion=$isPublicVersion,
-       |releaseSummary=$releaseSummary,
-       |releaseNotes=$releaseNotes)
+        |baseVersion=${baseVersion.getName},
+        |buildNumber=$buildNumber,
+        |versionNumber=$versionNumber,
+        |isPublicVersion=$isPublicVersion,
+        |releaseSummary=$releaseSummary,
+        |releaseNotes=$releaseNotes)
      """.stripMargin
 }
 
@@ -114,6 +115,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
       .releaseSummary(fugue.Option.some(newVersionDetails.releaseSummary))
       .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseNotes)))
+      .release(new AddonVersionReleasePropertiesBuilder().date(new org.joda.time.LocalDate()).build())
       .buildNumber(newVersionDetails.buildNumber)
       .artifact(fugue.Option.some(artifactId))
       .name(newVersionDetails.versionNumber)
