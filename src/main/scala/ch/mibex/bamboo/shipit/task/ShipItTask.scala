@@ -180,10 +180,10 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
 
   private def storeResultsLinkInfo(commonTaskContext: CommonTaskContext, newVersion: AddonVersion) {
     commonTaskContext match {
-      case t: TaskContext if newVersion.getArtifactInfo.isDefined =>
+      case t: TaskContext if newVersion.getArtifactInfo.isDefined && newVersion.getName.isDefined =>
         val customBuildData = t.getBuildContext.getBuildResult.getCustomBuildData
         customBuildData.put(ResultLinkPluginBinaryUrl, newVersion.getArtifactInfo.get().getBinaryUri.toString)
-        customBuildData.put(ResultLinkPluginVersion, newVersion.getName)
+        customBuildData.put(ResultLinkPluginVersion, newVersion.getName.get())
       case _ => // do not store the link as it is a deployment project where this is not supported yet
     }
   }

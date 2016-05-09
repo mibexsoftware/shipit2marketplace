@@ -9,7 +9,6 @@ import com.atlassian.marketplace.client.api._
 import com.atlassian.marketplace.client.http.HttpConfiguration
 import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
-import com.atlassian.marketplace.client.model.ModelBuilders.AddonVersionReleasePropertiesBuilder
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 
@@ -115,7 +114,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
       .releaseSummary(fugue.Option.some(newVersionDetails.releaseSummary))
       .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseNotes)))
-      .release(new AddonVersionReleasePropertiesBuilder().date(new org.joda.time.LocalDate()).build())
+      .releaseDate(new org.joda.time.LocalDate())
       .buildNumber(newVersionDetails.buildNumber)
       .artifact(fugue.Option.some(artifactId))
       .name(newVersionDetails.versionNumber)
