@@ -18,6 +18,7 @@ import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.plugin.tool.{PluginArtifactDetails, PluginInfoTool}
 import com.atlassian.sal.api.message.I18nResolver
+import org.apache.commons.lang3.StringUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -74,6 +75,10 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
+  // PluginInfoTool.parsePluginArtifact yields the plug-in key of the test plug-in instead of the production one if
+  // there is one; we therefore remove a "-tests" suffix here to be safe
+  private def stripTestSuffix(pluginKey: String) = StringUtils.removeEnd(pluginKey, "-tests")
+
   private def createNewPluginVersion(taskContext: CommonTaskContext,
                                      commonContext: CommonContext,
                                      runtimeContext: JMap[String, String],
@@ -87,7 +92,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
           taskBuilder.failed().build
         case Right(Some(plugin)) =>
-          findBaseVersionForNewSubmission(plugin, commonContext, mpac) match {
+          findBaseVersionForNewSubmission(stripTestSuffix(plugin.getKey), commonContext, mpac) match {
             case Left(error) =>
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
               taskBuilder.failed().build
@@ -157,6 +162,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
     NewPluginVersionDetails(
+      pluginKey = stripTestSuffix(plugin.getKey),
       plugin = plugin,
       userName = getTriggerUser(commonContext),
       baseVersion = baseVersion,
@@ -257,14 +263,14 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
   private def getTaskDefinitionFromBuild(commonContext: CommonContext) =
     commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
 
-  private def findBaseVersionForNewSubmission(plugin: Addon, commonContext: CommonContext, mpac: MpacFacade) = {
+  private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext, mpac: MpacFacade) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     Option(vars.get(BambooPluginBaseVersionVariableKey)) match {
       case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
         // Bamboo variable has always precedence
-        mpac.getVersion(plugin.getKey, Option(baseVersion.getValue))
+        mpac.getVersion(pluginKey, Option(baseVersion.getValue))
       case _ =>
-        mpac.getVersion(plugin.getKey)
+        mpac.getVersion(pluginKey)
     }
   }
 
