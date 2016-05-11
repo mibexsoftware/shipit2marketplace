@@ -87,12 +87,12 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-      mpac.findPlugin(pluginInfo.getKey) match {
+      mpac.findPlugin(stripTestSuffix(pluginInfo.getKey)) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
           taskBuilder.failed().build
         case Right(Some(plugin)) =>
-          findBaseVersionForNewSubmission(stripTestSuffix(plugin.getKey), commonContext, mpac) match {
+          findBaseVersionForNewSubmission(plugin.getKey, commonContext, mpac) match {
             case Left(error) =>
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
               taskBuilder.failed().build
