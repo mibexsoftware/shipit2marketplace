@@ -14,8 +14,7 @@ import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
-case class NewPluginVersionDetails(pluginKey: String,
-                                   plugin: Addon,
+case class NewPluginVersionDetails(plugin: Addon,
                                    baseVersion: AddonVersion,
                                    buildNumber: Int,
                                    versionNumber: String,
@@ -25,7 +24,7 @@ case class NewPluginVersionDetails(pluginKey: String,
                                    releaseSummary: String,
                                    releaseNotes: String) {
   override def toString: String =
-    s"""plugin=$pluginKey,
+    s"""plugin=${plugin.getKey},
         |baseVersion=${baseVersion.getName},
         |buildNumber=$buildNumber,
         |versionNumber=$versionNumber,
@@ -125,7 +124,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .build()
 
     try {
-      Right(client.addons().createVersion(newVersionDetails.pluginKey, addonVersion))
+      Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion))
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)

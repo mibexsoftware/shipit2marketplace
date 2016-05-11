@@ -75,10 +75,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  // PluginInfoTool.parsePluginArtifact yields the plug-in key of the test plug-in instead of the production one if
-  // there is one; we therefore remove a "-tests" suffix here to be safe
-  private def stripTestSuffix(pluginKey: String) = StringUtils.removeEnd(pluginKey, "-tests")
-
   private def createNewPluginVersion(taskContext: CommonTaskContext,
                                      commonContext: CommonContext,
                                      runtimeContext: JMap[String, String],
@@ -87,7 +83,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-      mpac.findPlugin(stripTestSuffix(pluginInfo.getKey)) match {
+      mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
           taskBuilder.failed().build
@@ -162,7 +158,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
     NewPluginVersionDetails(
-      pluginKey = stripTestSuffix(plugin.getKey),
       plugin = plugin,
       userName = getTriggerUser(commonContext),
       baseVersion = baseVersion,
