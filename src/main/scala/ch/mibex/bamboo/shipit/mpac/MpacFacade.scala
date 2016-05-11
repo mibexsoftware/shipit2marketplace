@@ -18,6 +18,7 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    baseVersion: AddonVersion,
                                    buildNumber: Int,
                                    versionNumber: String,
+                                   userName: Option[String],
                                    binary: File,
                                    isPublicVersion: Boolean,
                                    releaseSummary: String,
@@ -112,11 +113,12 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
     val addonVersion = ModelBuilders
       .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
-      .releaseSummary(fugue.Option.some(newVersionDetails.releaseSummary))
-      .releaseNotes(fugue.Option.some(HtmlString.html(newVersionDetails.releaseNotes)))
+      .releaseSummary(newVersionDetails.releaseSummary)
+      .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
       .releaseDate(new org.joda.time.LocalDate())
       .buildNumber(newVersionDetails.buildNumber)
-      .artifact(fugue.Option.some(artifactId))
+      .releasedBy(newVersionDetails.userName)
+      .artifact(artifactId)
       .name(newVersionDetails.versionNumber)
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
       .build()
@@ -154,6 +156,12 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         Some(MpacConnectionError())
     }
   }
+
+  implicit def asFugueOption[T](value: T): fugue.Option[T] = fugue.Option.some(value)
+
+  implicit def asFugueOption[T](scalaOpt: Option[T]): fugue.Option[T] =
+    if (scalaOpt.isDefined) fugue.Option.some(scalaOpt.get)
+    else fugue.Option.none()
 
   implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
     if (upmOpt.isDefined) Some(upmOpt.get)

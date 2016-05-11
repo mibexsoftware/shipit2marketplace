@@ -136,13 +136,11 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport cachedPlanManager: Ca
         val password = encryptionService.decrypt(credentials.getVendorPassword)
         val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, password)
         MpacFacade.withMpac(vendorCredentials) { mpac =>
-          mpac.checkCredentials() foreach { error =>
-            error match {
-              case MpacAuthenticationError() =>
-                errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
-              case _ =>
-                errors.addErrorMessage(getText(error.i18n))
-            }
+          mpac.checkCredentials() foreach {
+            case error@MpacAuthenticationError() =>
+              errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
+            case error =>
+              errors.addErrorMessage(getText(error.i18n))
           }
         }
       case None =>

@@ -3,7 +3,7 @@ package ch.mibex.bamboo.shipit.task
 import java.util.concurrent.Callable
 import java.util.{Map => JMap}
 
-import ch.mibex.bamboo.shipit.jira.{JiraFacade, JiraIssue}
+import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.CredentialsRequiredException

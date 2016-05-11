@@ -158,6 +158,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     ).toBoolean
     NewPluginVersionDetails(
       plugin = plugin,
+      userName = getTriggerUser(commonContext),
       baseVersion = baseVersion,
       buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo),
       versionNumber = pluginInfo.getVersion,
@@ -166,6 +167,11 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       releaseSummary = releaseSummary,
       releaseNotes = releaseNotes
     )
+  }
+
+  private def getTriggerUser(buildContext: CommonContext) = {
+    val vars = buildContext.getVariableContext.getEffectiveVariables
+    Option(vars.get("jira.username")) map { _.getValue }
   }
 
   // this is an additional safety check that this build has been triggered from JIRA because
