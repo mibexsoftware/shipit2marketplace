@@ -1,6 +1,7 @@
 package ch.mibex.bamboo.shipit
 
 import java.io.File
+import java.util.concurrent.Callable
 
 import com.atlassian.bamboo.utils.FileVisitor
 import com.atlassian.plugin.Application
@@ -78,6 +79,14 @@ object Utils {
       .mkString("")
       .toInt
     buildNr
+  }
+  // Use like this:
+  // import Utils.functionToUncheckedOp
+  // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({
+  //   // code to run with security context
+  // })
+  implicit def functionToUncheckedOp[T](f : => T) = new Callable[T] {
+    override def call() = f
   }
 
 }

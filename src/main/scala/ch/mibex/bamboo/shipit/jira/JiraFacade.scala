@@ -7,6 +7,11 @@ import com.atlassian.sal.api.net.Request
 import com.atlassian.sal.api.net.Request.MethodType.GET
 import spray.json._
 
+import scala.beans.BeanProperty
+
+// bean properties are necessary for accessing content in freemarker templates
+case class JiraProject(@BeanProperty key: String, @BeanProperty name: String)
+
 case class JiraIssue(key: String, summary: String, issueType: String)
 
 case class JiraIssueFields(summary: String)
@@ -17,6 +22,7 @@ case class ReauthNecessary(url: String)
 
 
 object JiraFacade {
+
   val issueTypeRenamings = Map(
     "Bug" -> "Bug fixes",
     "Feature" -> "New features",
@@ -44,11 +50,16 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
     implicit val projectVersionFormat = jsonFormat2(JiraProjectVersion)
   }
 
+  object ProjectProtocol extends DefaultJsonProtocol {
+    implicit val projectFormat = jsonFormat2(JiraProject)
+  }
+
   def getServerInfo[T](responseHandler: ApplicationLinkResponseHandler[T]): T = {
     val request = requestFactory.createRequest(Request.MethodType.GET, s"rest/api/2/serverInfo")
     request.execute(responseHandler)
   }
 
+  // project=${jira.projectKey}+AND+status+in+(resolved,closed,done)+and+fixVersion=${jira.version}
   def collectReleaseNotes(projectKey: String, projectVersion: String): String = {
     val jql = s"project=$projectKey+AND+status+in+(resolved,closed,done)+and+fixVersion=$projectVersion"
     val request = requestFactory.createRequest(GET, s"rest/api/2/search?jql=$jql")
@@ -76,6 +87,16 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
       .convertTo[List[JiraProjectVersion]]
       .find(_.name == projectVersion)
       .flatMap(_.description)
+  }
+
+  def findAllProjects(): List[JiraProject] = {
+    val request = requestFactory.createRequest(GET, s"rest/api/2/project")
+    val response = request.execute()
+    log.error(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/: $response")
+    import ProjectProtocol._
+    response
+      .parseJson
+      .convertTo[List[JiraProject]]
   }
 
 }
