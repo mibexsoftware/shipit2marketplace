@@ -3,8 +3,8 @@ package ch.mibex.bamboo.shipit.jira
 import ch.mibex.bamboo.shipit.Constants.MaxReleaseNotesLength
 import ch.mibex.bamboo.shipit.{Logging, Utils}
 import com.atlassian.applinks.api.{ApplicationLinkRequestFactory, ApplicationLinkResponseHandler}
-import com.atlassian.sal.api.net.Request
 import com.atlassian.sal.api.net.Request.MethodType.GET
+import com.atlassian.sal.api.net._
 import spray.json._
 
 import scala.beans.BeanProperty
@@ -62,9 +62,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   // project=${jira.projectKey}+AND+status+in+(resolved,closed,done)+and+fixVersion=${jira.version}
   def collectReleaseNotes(projectKey: String, projectVersion: String): String = {
     val jql = s"project=$projectKey+AND+status+in+(resolved,closed,done)+and+fixVersion=$projectVersion"
-    val request = requestFactory.createRequest(GET, s"rest/api/2/search?jql=$jql")
-    val response = request.execute()
-    debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
+    val response = doGet(s"rest/api/2/search?jql=$jql")
     val json = Utils.mapFromJson(response)
     val issues = for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])
       yield {
@@ -77,10 +75,8 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
     toReleaseNotes(issues)
   }
 
-  def collectReleaseSummary(projectKey: String, projectVersion: String): Option[String] = {
-    val request = requestFactory.createRequest(GET, s"rest/api/2/project/$projectKey/versions")
-    val response = request.execute()
-    debug(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/$projectKey/versions: $response")
+  def getVersionDescription(projectKey: String, projectVersion: String): Option[String] = {
+    val response = doGet(s"rest/api/2/project/$projectKey/versions")
     import ProjectVersionProtocol._
     response
       .parseJson
@@ -90,13 +86,25 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   }
 
   def findAllProjects(): List[JiraProject] = {
-    val request = requestFactory.createRequest(GET, s"rest/api/2/project")
-    val response = request.execute()
-    log.error(s"SHIPIT2MARKETPLACE: response from rest/api/2/project/: $response")
+    val response = doGet("rest/api/2/project")
     import ProjectProtocol._
     response
       .parseJson
       .convertTo[List[JiraProject]]
+  }
+
+  private def doGet(url: String) = {
+    val request = requestFactory.createRequest(GET, url)
+    request.executeAndReturn(new ReturningResponseHandler[Response, String]() {
+      override def handle(response: Response): String = {
+        val responseBody = response.getResponseBodyAsString
+        if (!response.isSuccessful) {
+          throw new ResponseStatusException(s"${response.getStatusText}: $responseBody", response)
+        }
+        debug(s"SHIPIT2MARKETPLACE: response from $url: $responseBody")
+        responseBody
+      }
+    })
   }
 
 }

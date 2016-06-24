@@ -28,6 +28,7 @@ case class NewPluginVersionDetails(plugin: Addon,
         |baseVersion=${baseVersion.getName},
         |buildNumber=$buildNumber,
         |versionNumber=$versionNumber,
+        |userName=${userName.getOrElse("")},
         |isPublicVersion=$isPublicVersion,
         |releaseSummary=$releaseSummary,
         |releaseNotes=$releaseNotes)
@@ -122,7 +123,6 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .name(newVersionDetails.versionNumber)
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
       .build()
-
     try {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion))
     } catch {
@@ -134,11 +134,11 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         Left(MpacConnectionError())
       case e: MpacException =>
         log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)
-        val reason = Utils.mapFromJson(e.getMessage)
-          .get("errors")
-          .map(e => e.asInstanceOf[List[String]].mkString(", "))
-          .getOrElse("Unknown reason")
-        Left(MpacUploadError(reason))
+//        val reason = Utils.mapFromJson(e.getMessage)
+//          .get("errors")
+//          .map(e => e.asInstanceOf[List[String]].mkString(", "))
+//          .getOrElse("Unknown reason")
+        Left(MpacUploadError(e.getMessage))
     }
   }
 

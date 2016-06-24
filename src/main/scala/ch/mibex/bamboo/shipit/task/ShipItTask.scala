@@ -1,12 +1,10 @@
 package ch.mibex.bamboo.shipit.task
 
-import java.io.File
-import java.util.{Map => JMap}
-
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
+import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.task.artifacts.{ArtifactDownloaderTaskId, ArtifactSubscriptionId, DownloaderArtifactCollector, SubscribedArtifactCollector}
-import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
+import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.bamboo.build.logger.BuildLogger
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
 import com.atlassian.bamboo.deployments.projects.service.DeploymentProjectService
@@ -14,75 +12,75 @@ import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.{DependencyTriggerReason, TriggerReason}
-import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
+import com.atlassian.marketplace.client.model.AddonVersion
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
-import com.atlassian.plugin.tool.{PluginArtifactDetails, PluginInfoTool}
+import com.atlassian.plugin.tool.PluginInfoTool
 import com.atlassian.sal.api.message.I18nResolver
-import org.apache.commons.lang3.StringUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
-import scala.collection.JavaConverters._
+
+case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
+
 
 @Component
 class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionService,
                               @ComponentImport deploymentProjectService: DeploymentProjectService,
                               @ComponentImport i18nResolver: I18nResolver,
+                              mpacCredentialsDao: AdminSettingsDao,
                               buildArtifactCollector: DownloaderArtifactCollector,
+                              newPluginDataCollector: NewPluginVersionDataCollector,
                               subscribedArtifactCollector: SubscribedArtifactCollector)
-    extends TaskType with DeploymentTaskType with Logging {
+  extends TaskType with DeploymentTaskType with Logging {
 
   import Constants._
   import ShipItTaskConfigurator._
-  import ShipItTaskDataProvider._
-
-  lazy val FullyQualifiedPluginTaskKey = s"${Utils.findPluginKeyInDescriptor()}:$PluginTaskKey"
 
   override def execute(taskContext: TaskContext): TaskResult =
     runTask(
       taskContext = taskContext,
       commonContext = taskContext.getBuildContext,
-      triggerReason => triggerReason.getKey == JiraReleaseTriggerReasonKey
+      triggerReason => triggerReason.getKey == JiraReleaseTriggerReasonKey,
+      isBranchBuild = taskContext.getBuildContext.isBranch
     )
 
   override def execute(deploymentTaskContext: DeploymentTaskContext): TaskResult =
     runTask(
       taskContext = deploymentTaskContext,
       commonContext = deploymentTaskContext.getDeploymentContext,
-      triggerReason => Array(JiraReleaseTriggerReasonKey, DependencyTriggerReason.KEY) contains triggerReason.getKey
+      triggerReason => Array(JiraReleaseTriggerReasonKey, DependencyTriggerReason.KEY) contains triggerReason.getKey,
+      isBranchBuild = false // for deployment projects we can use conditional triggers for this
     )
 
   private def runTask(taskContext: CommonTaskContext,
                       commonContext: CommonContext,
-                      isAllowedTriggerReason: TriggerReason => Boolean): TaskResult = {
+                      isAllowedTriggerReason: TriggerReason => Boolean,
+                      isBranchBuild: Boolean) = {
     val buildLogger = taskContext.getBuildLogger
     val taskBuilder = TaskResultBuilder.newBuilder(taskContext)
-    if (!isTriggeredFromJira(commonContext) || !isAllowedTriggerReason(commonContext.getTriggerReason)) {
+
+    if (isBranchBuild && !isBranchBuildEnabled(taskContext)) {
+      buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.branch.builds.not.enabled"))
+      taskBuilder.success.build
+    } else if (isOnlyDeployFromJiraReleasePanelAllowed(taskContext)
+        && !(isTriggeredFromJira(commonContext) && isAllowedTriggerReason(commonContext.getTriggerReason))) {
       buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.not.triggered.from.jira"))
-      return taskBuilder.success.build
-    }
-    val taskDefinition = getTaskDefinitionFromBuild(commonContext).getOrElse(
-      throw new TaskException("Task definition not found")
-    )
-    val runtimeContext = getRuntimeContext(commonContext, taskDefinition)
-    // report errors detected in the run-time task provider
-    Option(runtimeContext.get(RunTimeTaskError)) match {
-      case Some(error) =>
-        buildLogger.addErrorLogEntry(error)
-        taskBuilder.failed().build
-      case None =>
-        createNewPluginVersion(taskContext, commonContext, runtimeContext, taskBuilder)
+      // we should not fail the build in this case because this could be a plan branch which should
+      // not result in a Marketplace deployment
+      taskBuilder.success.build
+    } else {
+      createNewPluginVersion(taskContext, commonContext, taskBuilder)
     }
   }
 
   private def createNewPluginVersion(taskContext: CommonTaskContext,
                                      commonContext: CommonContext,
-                                     runtimeContext: JMap[String, String],
                                      taskBuilder: TaskResultBuilder): TaskResult = {
     val buildLogger = taskContext.getBuildLogger
-    MpacFacade.withMpac(getMpacCredentials(runtimeContext)) { mpac =>
+    MpacFacade.withMpac(getMpacCredentials) { mpac =>
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
+
       mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
@@ -93,10 +91,9 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
-              val newPluginVersion = prepareDataForNewPluginVersion(
-                taskContext, commonContext, runtimeContext, artifact, baseVersion, pluginInfo, plugin
+              val newPluginVersion = newPluginDataCollector.collectData(
+                taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin
               )
-              debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
               uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
@@ -114,12 +111,13 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
                                      buildLogger: BuildLogger,
                                      mpac: MpacFacade,
                                      newPluginVersion: NewPluginVersionDetails): TaskResult = {
+    debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
         buildLogger.addBuildLogEntry(
           i18nResolver.getText("shipit.task.successfully.shipped",
-            newVersion.getName,
-            newPluginVersion.plugin.getName)
+          newVersion.getName,
+          newPluginVersion.plugin.getName)
         )
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build
@@ -134,46 +132,11 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  private def prepareDataForNewPluginVersion(taskContext: CommonTaskContext,
-                                             commonContext: CommonContext,
-                                             runtimeContext: JMap[String, String],
-                                             artifact: File,
-                                             baseVersion: AddonVersion,
-                                             pluginInfo: PluginArtifactDetails,
-                                             plugin: Addon): NewPluginVersionDetails = {
-    val releaseSummary = geValueFromPlanVariableOrRuntime(
-      planVariableKey = BambooReleaseSummaryVariableKey,
-      runtimeVariableKey = ShipItVersionDescription,
-      commonContext, runtimeContext
-    )
-    val releaseNotes = geValueFromPlanVariableOrRuntime(
-      planVariableKey = BambooReleaseNotesVariableKey,
-      runtimeVariableKey = ShipItReleaseNotes,
-      commonContext, runtimeContext
-    )
-    val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
-      throw new TaskException("Public version setting not found")
-    ).toBoolean
-    val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
-      throw new TaskException("Deduce build number setting not found")
-    ).toBoolean
-    NewPluginVersionDetails(
-      plugin = plugin,
-      userName = getTriggerUser(commonContext),
-      baseVersion = baseVersion,
-      buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo),
-      versionNumber = pluginInfo.getVersion,
-      binary = artifact,
-      isPublicVersion = isPublicVersion,
-      releaseSummary = releaseSummary,
-      releaseNotes = releaseNotes
-    )
-  }
+  private def isOnlyDeployFromJiraReleasePanelAllowed(taskContext: CommonTaskContext) =
+    Option(taskContext.getConfigurationMap.getAsBoolean(IsJiraReleasePanelModeField)).getOrElse(false)
 
-  private def getTriggerUser(buildContext: CommonContext) = {
-    val vars = buildContext.getVariableContext.getEffectiveVariables
-    Option(vars.get("jira.username")) map { _.getValue }
-  }
+  private def isBranchBuildEnabled(taskContext: CommonTaskContext) =
+    Option(taskContext.getConfigurationMap.getAsBoolean(RunOnBranchBuildsField)).getOrElse(false)
 
   // this is an additional safety check that this build has been triggered from JIRA because
   // the trigger reason JIRA is not always propagated to the deployment project
@@ -195,18 +158,13 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  private def getRuntimeContext(taskContext: CommonContext, taskDefinition: TaskDefinition) =
-    taskContext.getRuntimeTaskContext.getRuntimeContextForTask(taskDefinition)
-
-  private def getMpacCredentials(runtimeContext: JMap[String, String]) = {
-    val vendorName = Option(runtimeContext.get(MpacVendorName)).getOrElse(
-      throw new TaskException("Marketplace vendor name in plug-in settings not configured")
-    )
-    val vendorPassword = Option(runtimeContext.get(MpacVendorPassword)) match {
-      case Some(pw) if pw.trim.nonEmpty => encryptionService.decrypt(pw)
-      case None => throw new TaskException("Marketplace vendor name in plug-in settings not configured")
-    }
-    MpacCredentials(vendorName, vendorPassword)
+  private def getMpacCredentials = mpacCredentialsDao.find() match {
+    case Some(credentials) =>
+      MpacCredentials(
+        vendorUserName = credentials.getVendorUserName,
+        vendorPassword = encryptionService.decrypt(credentials.getVendorPassword)
+      )
+    case None => throw new TaskException("Marketplace credentials not found")
   }
 
   private def findArtifact(taskContext: CommonTaskContext) = {
@@ -222,45 +180,9 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }).getOrElse(throw new TaskException("Artifact to deploy setting not found"))
   }
 
-  private def geValueFromPlanVariableOrRuntime(planVariableKey: String,
-                                               runtimeVariableKey: String,
-                                               commonContext: CommonContext,
-                                               runtimeContext: JMap[String, String]) = {
-    val vars = commonContext.getVariableContext.getEffectiveVariables
-    Option(vars.get(planVariableKey)) match {
-      case Some(variable) if variable.getValue.trim.nonEmpty => // plan variables have precedence
-        variable.getValue
-      case _ =>
-        Option(runtimeContext.get(runtimeVariableKey)).getOrElse(
-          throw new TaskException(s"$planVariableKey and $runtimeVariableKey could not be determined")
-        )
-    }
-  }
-
-  private def determineBuildNumber(commonContext: CommonContext,
-                                   deduceBuildNr: Boolean,
-                                   pluginInfo: PluginArtifactDetails) = {
-    val vars = commonContext.getVariableContext.getEffectiveVariables
-    Option(vars.get(BambooBuildNrVariableKey)) match {
-      case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
-        // Bamboo variable has always precedence
-        buildNr.getValue.toInt
-      case _ if deduceBuildNr => // otherwise we deduce the build number if the setting is active
-        Utils.toBuildNumber(pluginInfo.getVersion)
-      case _ =>
-        throw new TaskException(
-            s"""A build number has to be specified with the Bamboo variable '$BambooBuildNrVariableKey' if the build
-               |number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
-        )
-    }
-  }
-
-  private def getTaskDefinitionFromBuild(commonContext: CommonContext) =
-    commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
-
   private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext, mpac: MpacFacade) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
-    Option(vars.get(BambooPluginBaseVersionVariableKey)) match {
+    Option(vars.get(BambooVariables.BambooPluginBaseVersionVariableKey)) match {
       case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
         // Bamboo variable has always precedence
         mpac.getVersion(pluginKey, Option(baseVersion.getValue))

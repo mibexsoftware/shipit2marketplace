@@ -2,6 +2,7 @@ package ch.mibex.bamboo.shipit.jira
 
 import com.atlassian.applinks.api.{ApplicationLinkRequest, ApplicationLinkRequestFactory}
 import com.atlassian.sal.api.net.Request.MethodType._
+import com.atlassian.sal.api.net.{Response, ReturningResponseHandler}
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -108,7 +109,7 @@ class JiraFacadeTest extends Specification with Mockito {
 
     "yield the summary for the version we are looking for" in new JiraReleaseSummaryContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.collectReleaseSummary(projectKey, "1.0.1") must beSome("Datacenter compatibility")
+      jiraFacade.getVersionDescription(projectKey, "1.0.1") must beSome("Datacenter compatibility")
     }
 
   }
@@ -169,8 +170,9 @@ class JiraFacadeTest extends Specification with Mockito {
     val applicationLinkRequestFactory = mock[ApplicationLinkRequestFactory]
     val projectKey = "SHIPIT"
     val applicationLinkRequest = mock[ApplicationLinkRequest]
+    val responseHandler = mock[ReturningResponseHandler[Response, String]]
     applicationLinkRequestFactory.createRequest(GET, s"rest/api/2/project/$projectKey/versions") returns applicationLinkRequest
-    applicationLinkRequest.execute() returns
+    applicationLinkRequest.executeAndReturn(responseHandler) returns
       """[
         |  {
         |    "self": "http://localhost/jira/rest/api/2/version/10601",

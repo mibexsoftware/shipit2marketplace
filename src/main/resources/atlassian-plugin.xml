@@ -28,7 +28,6 @@
         <resource type="freemarker" name="edit" location="templates/task-config.ftl"/>
         <help link="shipit.task.help.link" title="shipit.task.help.link.title" />
         <resource type="download" name="icon" location="images/pluginTask.png"/> <!-- 80 by 80 pixels transparent -->
-        <runtimeTaskDataProvider class="ch.mibex.bamboo.shipit.task.ShipItTaskDataProvider"/>
     </taskType>
 
     <!-- Link to Marketplace build -->

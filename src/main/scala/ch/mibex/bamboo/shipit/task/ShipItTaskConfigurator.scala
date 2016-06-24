@@ -25,6 +25,7 @@ import com.atlassian.bamboo.utils.error.ErrorCollection
 import com.atlassian.bamboo.variable.VariableDefinitionManager
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.sal.api.net.Response
+import com.google.common.collect.Maps
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -36,6 +37,7 @@ object ShipItTaskConfigurator {
   final val DeduceBuildNrField = "deduceBuildNrFromPluginVersion"
   final val ArtifactToDeployKeyField = "artifactToDeployKey"
   final val AllArtifactsToDeployList = "allArtifactsToDeploy"
+  final val RunOnBranchBuildsField = "runOnBranchBuilds"
   final val IsJiraReleasePanelModeField = "jiraReleasePanelDeploymentOnly"
   final val JiraProjectKeyField = "jiraProjectKey"
   final val JiraProjectList = "jiraProjects"
@@ -57,26 +59,11 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
 
   import ShipItTaskConfigurator._
 
-  private final val TaskFields = Set(
-    IsPublicVersionField,
-    UserNameField,
-    DeduceBuildNrField,
-    ArtifactToDeployKeyField,
-    IsJiraReleasePanelModeField,
-    JiraProjectKeyField
-  )
 
   override def populateContextForEdit(context: JMap[String, Object], taskDefinition: TaskDefinition): Unit = {
-    context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context))
-    context.put(UserNameField, taskDefinition.getConfiguration.get(UserNameField))
-    context.put(IsPublicVersionField, taskDefinition.getConfiguration.get(IsPublicVersionField))
-    context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
-    context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
-//    val d = taskDefinition.getConfiguration.get(IsJiraReleasePanelModeField)
-//    log.error(">>>> CURRENT VALUE : " + d)
-    context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))
-    context.put(JiraProjectList, getJiraProjects)
-//    taskConfiguratorHelper.populateContextWithConfiguration(context, taskDefinition, TaskFields)
+    fillContextFromConfig(context, taskDefinition)
+    context.put(JiraProjectList, getJiraProjects.asJava)
+    context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
     // this is for old task configurations where it was not possible to choose a sonar server configuration
     if (Option(context.get(IsJiraReleasePanelModeField)).isEmpty) {
       context.put(IsJiraReleasePanelModeField, JBoolean.TRUE)
@@ -84,14 +71,15 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   }
 
   override def populateContextForCreate(context: JMap[String, AnyRef]): Unit = {
-    context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context))
+    context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
     context.put(UserNameField, "")
     context.put(IsJiraReleasePanelModeField, JBoolean.TRUE)
     context.put(IsPublicVersionField, JBoolean.TRUE)
     context.put(DeduceBuildNrField, JBoolean.TRUE)
+    context.put(RunOnBranchBuildsField, JBoolean.FALSE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(JiraProjectKeyField, "")
-    context.put(JiraProjectList, getJiraProjects)
+    context.put(JiraProjectList, getJiraProjects.asJava)
   }
 
   private def collectArtifactsForUiList(taskContext: JMap[String, Object]) =
@@ -107,10 +95,11 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
 
   override def generateTaskConfigMap(actionParams: ActionParametersMap,
                                      taskDefinition: TaskDefinition): JMap[String, String] = {
-    val config = super.generateTaskConfigMap(actionParams, taskDefinition)
+    val config = Maps.newHashMap[String, String]()
     config.put(UserNameField, actionParams.getString(UserNameField))
     config.put(IsJiraReleasePanelModeField, actionParams.getBoolean(IsJiraReleasePanelModeField).toString)
     config.put(IsPublicVersionField, actionParams.getBoolean(IsPublicVersionField).toString)
+    config.put(RunOnBranchBuildsField, actionParams.getBoolean(RunOnBranchBuildsField).toString)
     config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
     config.put(ArtifactToDeployKeyField, actionParams.getString(ArtifactToDeployKeyField))
     config.put(JiraProjectKeyField, actionParams.getString(JiraProjectKeyField))
@@ -148,13 +137,19 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   //  }
 
   override def populateContextForView(context: JMap[String, AnyRef], taskDefinition: TaskDefinition): Unit = {
-    context.put(UserNameField, taskDefinition.getConfiguration.get(UserNameField))
-    context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
-    context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsPublicVersionField))
-    context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsPublicVersionField))
-    context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(IsPublicVersionField))
-    context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
+    fillContextFromConfig(context, taskDefinition)
   }
+
+  private def fillContextFromConfig(context: JMap[String, Object], taskDefinition: TaskDefinition): Object = {
+    context.put(UserNameField, taskDefinition.getConfiguration.get(UserNameField))
+    context.put(IsPublicVersionField, taskDefinition.getConfiguration.get(IsPublicVersionField))
+    context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
+    context.put(RunOnBranchBuildsField, taskDefinition.getConfiguration.get(RunOnBranchBuildsField))
+    context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
+    context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsJiraReleasePanelModeField))
+    context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))
+  }
+
   private def checkMpacCredentials(actionParams: ActionParametersMap, errors: ErrorCollection) {
     mpacCredentialsDao.find() match {
       case Some(credentials) =>
