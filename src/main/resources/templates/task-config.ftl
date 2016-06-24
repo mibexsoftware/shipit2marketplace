@@ -12,4 +12,5 @@
     [@ww.checkbox labelKey="shipit.task.runOnBranchBuilds" name="runOnBranchBuilds" /]
     [@ww.textfield labelKey="shipit.task.user" name="bambooUserId" template="userPicker" multiSelect=false
                    placeholderKey="shipit.task.user.placeholder" /]
+    [@ww.textarea labelKey="shipit.task.jql" name="jql" cssClass="long-field" /]
 </fieldset>

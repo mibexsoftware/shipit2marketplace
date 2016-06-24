@@ -43,7 +43,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
                   pluginInfo: PluginArtifactDetails,
                   plugin: Addon): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, commonContext)
-    val releaseSummaryAndDescription = collectReleaseData(projectInfos, commonContext)
+    val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, commonContext, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
       throw new TaskException("Public version setting not found")
     ).toBoolean
@@ -63,8 +63,9 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     )
   }
 
-  private def collectReleaseData(projectInfos: JiraProjectData,
-                                 commonContext: CommonContext): SummaryAndReleaseNotes = {
+  private def collectReleaseNotes(projectInfos: JiraProjectData,
+                                 commonContext: CommonContext,
+                                 taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
 
     val summaryAndReleaseNotes = for {
@@ -76,11 +77,11 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       case Some(fromPlanVariables) =>
         // both values are overridden by the user with plan variables, no need to get the data from JIRA
         fromPlanVariables
-      case None => fetchReleaseNotesFromJira(projectInfos)
+      case None => fetchReleaseNotesFromJira(projectInfos, taskContext)
     }
   }
 
-  private def fetchReleaseNotesFromJira(projectInfos: JiraProjectData) = {
+  private def fetchReleaseNotesFromJira(projectInfos: JiraProjectData, taskContext: CommonTaskContext) = {
     val appLink = jiraApplinksService.getJiraApplicationLinks.asScala.headOption.getOrElse(
       throw new TaskException("JIRA application link not found")
     )
@@ -90,7 +91,11 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
           val requestFactory = appLink.createAuthenticatedRequestFactory()
           val jiraFacade = new JiraFacade(requestFactory)
           val releaseSummary = jiraFacade.getVersionDescription(projectInfos.projectKey, projectInfos.version)
-          val releaseNotes = jiraFacade.collectReleaseNotes(projectInfos.projectKey, projectInfos.version)
+          val releaseNotes = jiraFacade.collectReleaseNotes(
+            projectKey = projectInfos.projectKey,
+            projectVersion = projectInfos.version,
+            jql = getJqlFromTaskConfig(taskContext)
+          )
           SummaryAndReleaseNotes(releaseSummary.get, releaseNotes)
         } catch {
           case e: CredentialsRequiredException =>
@@ -159,6 +164,9 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def onlyAllowDeployFromJiraReleasePanel(taskContext: CommonTaskContext) =
     Option(taskContext.getConfigurationMap.getAsBoolean(IsJiraReleasePanelModeField)).getOrElse(false)
+
+  private def getJqlFromTaskConfig(taskContext: CommonTaskContext) =
+    Option(taskContext.getConfigurationMap.get(JqlField)).getOrElse(DefaultJql)
 
   private def getUserToCollectJiraData(userName: Option[String], taskDefinition: TaskDefinition) = {
     val usersToTry = List(

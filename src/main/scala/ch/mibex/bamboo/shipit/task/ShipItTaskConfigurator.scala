@@ -4,7 +4,7 @@ import java.lang.{Boolean => JBoolean}
 import java.util.concurrent.Callable
 import java.util.{Map => JMap}
 
-import ch.mibex.bamboo.shipit.Logging
+import ch.mibex.bamboo.shipit.{Constants, Logging}
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacAuthenticationError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade}
@@ -41,6 +41,7 @@ object ShipItTaskConfigurator {
   final val IsJiraReleasePanelModeField = "jiraReleasePanelDeploymentOnly"
   final val JiraProjectKeyField = "jiraProjectKey"
   final val JiraProjectList = "jiraProjects"
+  final val JqlField = "jql"
 }
 
 @Component
@@ -58,15 +59,18 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   extends AbstractTaskConfigurator with Logging {
 
   import ShipItTaskConfigurator._
-
+  import Constants._
 
   override def populateContextForEdit(context: JMap[String, Object], taskDefinition: TaskDefinition): Unit = {
     fillContextFromConfig(context, taskDefinition)
     context.put(JiraProjectList, getJiraProjects.asJava)
     context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
-    // this is for old task configurations where it was not possible to choose a sonar server configuration
+    // this is for old task configurations where it was not possible to choose the following two values
     if (Option(context.get(IsJiraReleasePanelModeField)).isEmpty) {
       context.put(IsJiraReleasePanelModeField, JBoolean.TRUE)
+    }
+    if (Option(context.get(JqlField)).isEmpty) {
+      context.put(JqlField, DefaultJql)
     }
   }
 
@@ -79,6 +83,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     context.put(RunOnBranchBuildsField, JBoolean.FALSE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(JiraProjectKeyField, "")
+    context.put(JqlField, DefaultJql)
     context.put(JiraProjectList, getJiraProjects.asJava)
   }
 
@@ -98,6 +103,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     val config = Maps.newHashMap[String, String]()
     config.put(UserNameField, actionParams.getString(UserNameField))
     config.put(IsJiraReleasePanelModeField, actionParams.getBoolean(IsJiraReleasePanelModeField).toString)
+    config.put(JqlField, actionParams.getString(JqlField))
     config.put(IsPublicVersionField, actionParams.getBoolean(IsPublicVersionField).toString)
     config.put(RunOnBranchBuildsField, actionParams.getBoolean(RunOnBranchBuildsField).toString)
     config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
@@ -143,6 +149,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   private def fillContextFromConfig(context: JMap[String, Object], taskDefinition: TaskDefinition): Object = {
     context.put(UserNameField, taskDefinition.getConfiguration.get(UserNameField))
     context.put(IsPublicVersionField, taskDefinition.getConfiguration.get(IsPublicVersionField))
+    context.put(JqlField, taskDefinition.getConfiguration.get(JqlField))
     context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
     context.put(RunOnBranchBuildsField, taskDefinition.getConfiguration.get(RunOnBranchBuildsField))
     context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))

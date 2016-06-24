@@ -69,15 +69,23 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       // not result in a Marketplace deployment
       taskBuilder.success.build
     } else {
-      createNewPluginVersion(taskContext, commonContext, taskBuilder)
+      try {
+        createNewPluginVersion(taskContext, commonContext, taskBuilder)
+      } catch {
+        case e: TaskException =>
+          // it is much nicer to directly see an error in the build log summary than to see a stack trace in the build
+          // log; this is why we add a log entry instead of just throwing the TaskException
+          buildLogger.addErrorLogEntry(s"ShipIt to Marketplace task: ${e.getMessage}")
+          taskBuilder.failed.build()
+      }
     }
   }
 
   private def createNewPluginVersion(taskContext: CommonTaskContext,
                                      commonContext: CommonContext,
-                                     taskBuilder: TaskResultBuilder): TaskResult = {
-    val buildLogger = taskContext.getBuildLogger
+                                     taskBuilder: TaskResultBuilder): TaskResult =
     MpacFacade.withMpac(getMpacCredentials) { mpac =>
+      val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
 
@@ -104,7 +112,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
           taskBuilder.failed().build
       }
     }
-  }
 
   private def uploadNewPluginVersion(taskContext: CommonTaskContext,
                                      taskBuilder: TaskResultBuilder,
@@ -114,11 +121,9 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
-        buildLogger.addBuildLogEntry(
-          i18nResolver.getText("shipit.task.successfully.shipped",
-          newVersion.getName,
-          newPluginVersion.plugin.getName)
-        )
+        val successMsg = i18nResolver.getText("shipit.task.successfully.shipped",
+                                              newVersion.getName, newPluginVersion.plugin.getName)
+        buildLogger.addBuildLogEntry(successMsg)
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build
       case Left(me: MpacError) =>

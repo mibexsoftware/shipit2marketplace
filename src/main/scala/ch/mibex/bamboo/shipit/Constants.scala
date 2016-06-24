@@ -5,7 +5,6 @@ object Constants {
   val ResultLinkPluginBinaryUrl = "shipItPluginBinaryUrl"
   val ResultLinkPluginVersion = "shipItPluginVersion"
 
-
   object BambooVariables {
     val BambooJiraVersionVariableKey = "shipit2mpac.jiraversion"
     val BambooBuildNrVariableKey = "shipit2mpac.buildnr"
@@ -19,4 +18,5 @@ object Constants {
   val PluginTaskKey = "shipit2marketplace.task"
   val MaxReleaseSummaryLength = 80
   val MaxReleaseNotesLength = 1000
+  val DefaultJql = "status in (resolved,closed,done)"
 }

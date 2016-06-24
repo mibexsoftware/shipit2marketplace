@@ -1,5 +1,7 @@
 package ch.mibex.bamboo.shipit.jira
 
+import java.net.URLEncoder
+
 import ch.mibex.bamboo.shipit.Constants.MaxReleaseNotesLength
 import ch.mibex.bamboo.shipit.{Logging, Utils}
 import com.atlassian.applinks.api.{ApplicationLinkRequestFactory, ApplicationLinkResponseHandler}
@@ -26,6 +28,7 @@ object JiraFacade {
   val issueTypeRenamings = Map(
     "Bug" -> "Bug fixes",
     "Feature" -> "New features",
+    "New Feature" -> "New features",
     "Improvement" -> "Improvements"
   )
 
@@ -60,9 +63,9 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   }
 
   // project=${jira.projectKey}+AND+status+in+(resolved,closed,done)+and+fixVersion=${jira.version}
-  def collectReleaseNotes(projectKey: String, projectVersion: String): String = {
-    val jql = s"project=$projectKey+AND+status+in+(resolved,closed,done)+and+fixVersion=$projectVersion"
-    val response = doGet(s"rest/api/2/search?jql=$jql")
+  def collectReleaseNotes(projectKey: String, projectVersion: String, jql: String): String = {
+    val fullJql = s"project=$projectKey AND fixVersion=$projectVersion " + (if (jql.nonEmpty) s" AND $jql" else "")
+    val response = doGet(s"rest/api/2/search?jql=${URLEncoder.encode(fullJql, "UTF-8")}")
     val json = Utils.mapFromJson(response)
     val issues = for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])
       yield {
