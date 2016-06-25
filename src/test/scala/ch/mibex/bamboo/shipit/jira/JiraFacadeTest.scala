@@ -3,8 +3,7 @@ package ch.mibex.bamboo.shipit.jira
 import ch.mibex.bamboo.shipit.Constants.DefaultJql
 import com.atlassian.applinks.api.{ApplicationLinkRequest, ApplicationLinkRequestFactory}
 import com.atlassian.sal.api.net.Request.MethodType
-import com.atlassian.sal.api.net.Request.MethodType._
-import com.atlassian.sal.api.net.{Response, ResponseStatusException, ReturningResponseHandler}
+import com.atlassian.sal.api.net.{Response, ReturningResponseHandler}
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification

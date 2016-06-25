@@ -64,8 +64,8 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
   }
 
   private def collectReleaseNotes(projectInfos: JiraProjectData,
-                                 commonContext: CommonContext,
-                                 taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
+                                  commonContext: CommonContext,
+                                  taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
 
     val summaryAndReleaseNotes = for {
@@ -74,9 +74,8 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     } yield SummaryAndReleaseNotes(releaseSummaryPlanVariable.getValue, releaseNotesPlanVariable.getValue)
 
     summaryAndReleaseNotes match {
-      case Some(fromPlanVariables) =>
-        // both values are overridden by the user with plan variables, no need to get the data from JIRA
-        fromPlanVariables
+      // overridden by the user with plan variables, no need to get them from JIRA:
+      case Some(fromPlanVariables) => fromPlanVariables
       case None => fetchReleaseNotesFromJira(projectInfos, taskContext)
     }
   }

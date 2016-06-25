@@ -112,36 +112,6 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     config
   }
 
-  // we cannot create plan variables in populateContextForEdit or populateContextForCreate because the XSRF checks
-  // do not allow us to do this (mutative operation in GET request error!):
-  //     taskDefinition.getConfiguration.get("plan") match {
-  //      case job: Job => createPlanVariablesIfNecessary(job.getParent)
-  //      case _ => // deployment project
-  //        actionParams.get("relatedPlan") match {
-  //          case plan: ImmutableChain =>
-  //            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
-  //          case _ =>
-  //        }
-  //    }
-  // and in generateTaskConfigMap we do not know the plan key; so the user has to create these plan variables
-  // manually at the moment
-  //  private def createPlanVariablesIfNecessary(chain: Chain) {
-  //    val variableFactory = new VariableDefinitionFactoryImpl()
-  //    val emptyValue = null
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
-  //      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
-  //    }
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
-  //      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
-  //    }
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
-  //      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
-  //    }
-  //  }
-
   override def populateContextForView(context: JMap[String, AnyRef], taskDefinition: TaskDefinition): Unit = {
     fillContextFromConfig(context, taskDefinition)
   }
@@ -164,14 +134,11 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
         val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, password)
         MpacFacade.withMpac(vendorCredentials) { mpac =>
           mpac.checkCredentials() foreach {
-            case error@MpacAuthenticationError() =>
-              errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
-            case error =>
-              errors.addErrorMessage(getText(error.i18n))
+            case error@MpacAuthenticationError() => errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
+            case error => errors.addErrorMessage(getText(error.i18n))
           }
         }
-      case None =>
-        errors.addErrorMessage(getText("shipit.task.config.vendor.credentials.missing", getSettingsUrl))
+      case None => errors.addErrorMessage(getText("shipit.task.config.vendor.credentials.missing", getSettingsUrl))
     }
   }
 
@@ -196,7 +163,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   }
 
   private def getText(i18NKey: String, params: Object*) =
-  // we have to use the i18nBean instead of TextProvider because the latter is not able to use i18n args
+    // we have to use the i18nBean instead of TextProvider because the latter is not able to use i18n args
     bambooAuthContext.getI18NBean.getText(i18NKey, Array(params: _*))
 
   private def checkJiraConnectionWhenUserGiven(actionParams: ActionParametersMap,
@@ -265,5 +232,35 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   private def getJiraApplicationLink = jiraApplinksService.getJiraApplicationLinks.asScala.headOption
 
   private def getBambooBaseUrl = configAccessor.getAdministrationConfiguration.getBaseUrl
+
+  // we cannot create plan variables in populateContextForEdit or populateContextForCreate because the XSRF checks
+  // do not allow us to do this (mutative operation in GET request error!):
+  //     taskDefinition.getConfiguration.get("plan") match {
+  //      case job: Job => createPlanVariablesIfNecessary(job.getParent)
+  //      case _ => // deployment project
+  //        actionParams.get("relatedPlan") match {
+  //          case plan: ImmutableChain =>
+  //            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
+  //          case _ =>
+  //        }
+  //    }
+  // and in generateTaskConfigMap we do not know the plan key; so the user has to create these plan variables
+  // manually at the moment
+  //  private def createPlanVariablesIfNecessary(chain: Chain) {
+  //    val variableFactory = new VariableDefinitionFactoryImpl()
+  //    val emptyValue = null
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
+  //      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
+  //    }
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
+  //      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
+  //    }
+  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
+  //      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
+  //      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
+  //    }
+  //  }
 
 }

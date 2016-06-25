@@ -11,7 +11,6 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 object Utils {
 
@@ -80,6 +79,7 @@ object Utils {
       .toInt
     buildNr
   }
+
   // Use like this:
   // import Utils.functionToUncheckedOp
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({

@@ -64,7 +64,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
 
   // project=${jira.projectKey}+AND+status+in+(resolved,closed,done)+and+fixVersion=${jira.version}
   def collectReleaseNotes(projectKey: String, projectVersion: String, jql: String): String = {
-    val fullJql = s"project=$projectKey AND fixVersion=$projectVersion " + (if (jql.nonEmpty) s" AND $jql" else "")
+    val fullJql = s"project=$projectKey AND fixVersion=$projectVersion" + (if (jql.nonEmpty) s" AND $jql" else "")
     val response = doGet(s"rest/api/2/search?jql=${URLEncoder.encode(fullJql, "UTF-8")}")
     val json = Utils.mapFromJson(response)
     val issues = for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])

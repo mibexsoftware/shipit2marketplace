@@ -12,16 +12,15 @@ import com.opensymphony.xwork2.Action
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
 
-// Bamboo 5.10 doesn't like dependency injection with Spring annotations and actions:
+// Bamboo 5.10 doesn't like dependency injection with Spring annotations when using actions:
 // [INFO] [talledLocalContainer] org.springframework.beans.factory.BeanDefinitionStoreException: Failed to parse
 // configuration class [ch.mibex.bamboo.shipit.settings.AdminSettingsAction]; nested exception is
 // java.io.FileNotFoundException: class path resource [com/atlassian/bamboo/ww2/BambooActionSupport.class]
 // cannot be opened because it does not exist
 // We also cannot extend from BambooActionSupport because it uses @AutoWired and Bamboo does not seem to be able
 // to inject these dependencies (see https://answers.atlassian.com/questions/36114574/problem-with-linkeddeploymentprojectcacheservice---autowiring-failed)
-//@Component
-class AdminSettingsAction /*@Autowired()*/ (encryptionService: EncryptionService,
-                                            mpacCredentialsDao: AdminSettingsDao) extends ActionSupport with Logging {
+class AdminSettingsAction (encryptionService: EncryptionService,
+                           mpacCredentialsDao: AdminSettingsDao) extends ActionSupport with Logging {
 
   private val MpacVendorNameField = "vendorName"
   private val MpacVendorPasswordField = "vendorPassword"

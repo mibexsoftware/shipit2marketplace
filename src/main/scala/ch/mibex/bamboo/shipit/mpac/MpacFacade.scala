@@ -127,17 +127,13 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion))
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to server error", e)
         Left(MpacAuthenticationError())
       case e: MpacException.ConnectionFailure =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to connection failure", e)
         Left(MpacConnectionError())
       case e: MpacException =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in", e)
-//        val reason = Utils.mapFromJson(e.getMessage)
-//          .get("errors")
-//          .map(e => e.asInstanceOf[List[String]].mkString(", "))
-//          .getOrElse("Unknown reason")
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to unknown error", e)
         Left(MpacUploadError(e.getMessage))
     }
   }
@@ -149,10 +145,10 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       None
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to check credentials", e)
+        log.error(s"SHIPIT2MARKETPLACE: failed to check credentials due to server error", e)
         Some(MpacAuthenticationError())
       case e: MpacException.ConnectionFailure =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to check credentials", e)
+        log.error(s"SHIPIT2MARKETPLACE: failed to check credentials due to connection failure", e)
         Some(MpacConnectionError())
     }
   }

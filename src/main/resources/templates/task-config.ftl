@@ -7,9 +7,9 @@
         name='jiraProjectKey' id='jiraProjectKey' listKey='key' listValue='name'
         toggle='true' list=jiraProjects required='true'/]
     [/@ui.bambooSection]
+    [@ww.checkbox labelKey="shipit.task.runOnBranchBuilds" name="runOnBranchBuilds" /]
     [@ww.checkbox labelKey="shipit.task.publicVersion" name="publicVersion" /]
     [@ww.checkbox labelKey="shipit.task.deduceBuildNrFromPluginVersion" name="deduceBuildNrFromPluginVersion" /]
-    [@ww.checkbox labelKey="shipit.task.runOnBranchBuilds" name="runOnBranchBuilds" /]
     [@ww.textfield labelKey="shipit.task.user" name="bambooUserId" template="userPicker" multiSelect=false
                    placeholderKey="shipit.task.user.placeholder" /]
     [@ww.textarea labelKey="shipit.task.jql" name="jql" cssClass="long-field" /]
