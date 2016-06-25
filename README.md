@@ -8,6 +8,7 @@
 
 **Available in the [Atlassian Marketplace](https://marketplace.atlassian.com/plugins/ch.mibex.bamboo.shipit2mpac/server/overview)**
 
+
 ## About
 
 This Bamboo task creates new versions of your Atlassian plug-ins by uploading them to the Atlassian Marketplace and by
