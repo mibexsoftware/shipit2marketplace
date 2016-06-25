@@ -4,12 +4,12 @@ import java.lang.{Boolean => JBoolean}
 import java.util.concurrent.Callable
 import java.util.{Map => JMap}
 
-import ch.mibex.bamboo.shipit.{Constants, Logging}
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacAuthenticationError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
 import ch.mibex.bamboo.shipit.task.artifacts.{DownloaderArtifactCollector, SubscribedArtifactCollector}
+import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.applinks.api.{ApplicationLink, ApplicationLinkResponseHandler, CredentialsRequiredException}
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
 import com.atlassian.bamboo.collections.ActionParametersMap
@@ -58,8 +58,8 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
                                           subscribedArtifactCollector: SubscribedArtifactCollector)
   extends AbstractTaskConfigurator with Logging {
 
-  import ShipItTaskConfigurator._
   import Constants._
+  import ShipItTaskConfigurator._
 
   override def populateContextForEdit(context: JMap[String, Object], taskDefinition: TaskDefinition): Unit = {
     fillContextFromConfig(context, taskDefinition)
@@ -128,6 +128,8 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   }
 
   private def checkMpacCredentials(actionParams: ActionParametersMap, errors: ErrorCollection) {
+    def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
+
     mpacCredentialsDao.find() match {
       case Some(credentials) =>
         val password = encryptionService.decrypt(credentials.getVendorPassword)
@@ -143,6 +145,10 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   }
 
   override def validate(actionParams: ActionParametersMap, errors: ErrorCollection): Unit = {
+    def isDeploymentPlan = Option(actionParams.getString("planKey")).isEmpty
+
+    def isUserNameGiven = Option(actionParams.getString(UserNameField)).getOrElse("").trim.nonEmpty
+
     if (Option(actionParams.getString(ArtifactToDeployKeyField)).getOrElse("").trim.isEmpty) {
       errors.addError(ArtifactToDeployKeyField, "Artifact must not be empty.")
     }
@@ -151,6 +157,10 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
       errors.addError(JiraProjectKeyField, "JIRA project must not be empty when not using JIRA release panel mode.")
     }
     checkMpacCredentials(actionParams, errors)
+
+    if (isDeploymentPlan && !isUserNameGiven) {
+      errors.addError(UserNameField, "A Bamboo user must be chosen if this task is part of a deployment project.")
+    }
 
     getJiraApplicationLink match {
       case Some(appLink) =>
@@ -179,8 +189,6 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
       case _ => checkJiraApplicationLink(applLink, bambooAuthContext.getUserName, errors)
     }
   }
-
-  private def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
   private def checkJiraApplicationLink(jiraApplicationLink: ApplicationLink,
                                        userName: String,
