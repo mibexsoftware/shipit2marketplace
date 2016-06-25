@@ -89,13 +89,15 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         try {
           val requestFactory = appLink.createAuthenticatedRequestFactory()
           val jiraFacade = new JiraFacade(requestFactory)
-          val releaseSummary = jiraFacade.getVersionDescription(projectInfos.projectKey, projectInfos.version)
+          val releaseSummary = jiraFacade.getVersionDescription(projectInfos.projectKey, projectInfos.version).getOrElse(
+            throw new TaskException(s"No version summary found for JIRA project version ${projectInfos.version}")
+          )
           val releaseNotes = jiraFacade.collectReleaseNotes(
             projectKey = projectInfos.projectKey,
             projectVersion = projectInfos.version,
             jql = getJqlFromTaskConfig(taskContext)
           )
-          SummaryAndReleaseNotes(releaseSummary.get, releaseNotes)
+          SummaryAndReleaseNotes(releaseSummary, releaseNotes)
         } catch {
           case e: CredentialsRequiredException =>
             val reauthUrl = e.getAuthorisationURI().toString
