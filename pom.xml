@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
     <artifactId>shipit2mpac</artifactId>
-    <version>1.1.7</version>
+    <version>1.1.8</version>
 
     <organization>
         <name>Mibex Software GmbH</name>
@@ -15,7 +15,7 @@
     </organization>
 
     <name>ShipIt to Marketplace for Bamboo</name>
-    <description>Ship your plug-ins to the Atlassian Marketplace with one click</description>
+    <description>No more manual uploads to the Marketplace and no more manual entering of release summary, notes, etc. Ships your p2 plug-ins to the Atlassian Marketplace with one click.</description>
     <packaging>atlassian-plugin</packaging>
 
     <properties>
