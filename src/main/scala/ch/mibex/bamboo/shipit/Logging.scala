@@ -9,9 +9,9 @@ trait Logging {
   protected val log = Logger.getLogger(this.getClass)
 
   def debug[T](msg: => T): Unit = { // lazy function parameters to only evaluate msg when debug logging is enabled
-    if (log.isDebugEnabled) {
+//    if (log.isDebugEnabled) {
       log.error(msg.toString)
-    }
+//    }
   }
 
 }
