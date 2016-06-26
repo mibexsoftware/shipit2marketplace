@@ -153,7 +153,8 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         case _ => None
       }
       val user = getUserToCollectJiraData(triggerUserName, taskDefinition).getOrElse(
-        throw new TaskException("No valid user found to access JIRA")
+        throw new TaskException("No valid user found to access JIRA. You might want to configure a Bamboo user " +
+                                "with JIRA permissions in the task configuration.")
       )
       val projectVersion = pluginInfo.getVersion
       JiraProjectData(projectKey, projectVersion, user)
