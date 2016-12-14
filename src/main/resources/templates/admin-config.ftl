@@ -9,6 +9,7 @@
 [@ww.form action="updateShip2MpacConfiguration.action" method="post" submitLabelKey='shipit.admin.save']
     <h2>[@ww.text name='shipit.admin.credentials.section' /]</h2>
     <p>[@ww.text name='shipit.admin.credentials.section.details' /]</p>
+    <br>
 
     [@ww.textfield name='vendorName' labelKey='shipit.admin.vendor.login' descriptionKey='shipit.admin.vendor.login.description' required='true' /]
     [@ww.password name='vendorPassword' labelKey='shipit.admin.vendor.password' descriptionKey='shipit.admin.vendor.password.description' required='true' showPassword='true' /]
