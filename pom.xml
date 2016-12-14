@@ -10,7 +10,7 @@
         <url>https://www.mibexsoftware.com</url>
     </organization>
     <name>ShipIt to Marketplace for Bamboo</name>
-    <description>No more manual uploads and duplicating release summary, notes, etc. anymore. Ships your p2 plug-ins to the Atlassian Marketplace with one click.</description>
+    <description>No manual uploads and duplicating release notes anymore - ship your p2 plug-ins to the Atlassian Marketplace with one click</description>
     <packaging>atlassian-plugin</packaging>
     <properties>
         <bamboo.version>5.7.0</bamboo.version>
