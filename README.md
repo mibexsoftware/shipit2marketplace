@@ -11,9 +11,9 @@
 
 ## About
 
-This Bamboo task creates new versions of your Atlassian plug-ins by uploading them to the Atlassian Marketplace and by
-providing all necessary information for a new plug-in version like release notes, build number, etc. It supports two 
-ways of creating new plug-in versions:
+This Bamboo task creates new versions of your Atlassian plug-ins by uploading the plug-ins JAR file to the Atlassian Marketplace
+and by providing all necessary information for a new plug-in version like release notes, build number, etc. automatically.
+It supports two ways of creating new plug-in versions:
  
 1. You create a release with a new build from the JIRA release panel
 2. You push new commits to a branch (e.g., master) or trigger a Bamboo build manually
@@ -23,7 +23,7 @@ from the associated JIRA version. This means that you don't have to supply all t
 version of your plug-in manually, but instead this Bamboo task is able to do it for you. It also creates 
 release notes based on the JIRA issues associated with a JIRA project version.
 
-All you need to do is to add this Bamboo task to your build and configure like follows:
+All you need to do is to add this Bamboo task to your build and configure it as follows:
 
 ![Screenshot Bamboo task configuration](doc/task-config.png)
 
