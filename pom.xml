@@ -1,42 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
     <artifactId>shipit2mpac</artifactId>
     <version>1.2.1</version>
-
     <organization>
         <name>Mibex Software GmbH</name>
         <url>https://www.mibexsoftware.com</url>
     </organization>
-
     <name>ShipIt to Marketplace for Bamboo</name>
     <description>No more manual uploads to the Marketplace and no manual entering of release summary, notes, etc. anymore. Ships your p2 plug-ins to the Atlassian Marketplace with one click.</description>
     <packaging>atlassian-plugin</packaging>
-
     <properties>
         <bamboo.version>5.7.0</bamboo.version>
         <bamboo.data.version>3.2.2</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>6.2.1</amps.version>
+        <amps.version>6.2.6</amps.version>
         <xvfb.enable>true</xvfb.enable>
-        <scala.version>2.11.4</scala.version> <!-- mpac forces us to use Scala 2.11 -->
+        <scala.version>2.11.4</scala.version>
+        <!-- mpac forces us to use Scala 2.11 -->
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
     </properties>
-
     <scm>
         <connection>scm:git:ssh://git@github.com:mibexsoftware/shipit2marketplace.git</connection>
         <tag>HEAD</tag>
         <url>https://github.com/mibexsoftware/shipit2marketplace.git</url>
     </scm>
-
     <repositories>
         <repository>
             <id>maven-atlassian-com</id>
@@ -67,7 +60,6 @@
             </snapshots>
         </pluginRepository>
     </pluginRepositories>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -77,7 +69,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <plugins>
@@ -155,16 +146,9 @@
                     <allowGoogleTracking>false</allowGoogleTracking>
                     <instructions>
                         <Atlassian-Plugin-Key>${atlassian.plugin.key}</Atlassian-Plugin-Key>
-
                         <!-- Add package import here -->
-                        <Import-Package>
-                            org.springframework.osgi.*;resolution:="optional",
-                            org.eclipse.gemini.blueprint.*;resolution:="optional",
-                            com.atlassian.plugin.osgi.bridge.external,
-                            *;resolution:=optional
-                        </Import-Package>
+                        <Import-Package>org.springframework.osgi.*;resolution:="optional", org.eclipse.gemini.blueprint.*;resolution:="optional", com.atlassian.plugin.osgi.bridge.external, *;resolution:=optional</Import-Package>
                         <Export-Package/>
-
                         <!-- Ensure plugin is spring powered - see https://extranet.atlassian.com/x/xBS9hQ  -->
                         <Spring-Context>*</Spring-Context>
                     </instructions>
@@ -196,7 +180,6 @@
         </plugins>
         <!--<finalName>${project.artifactId}-${project.version}-${timestamp}</finalName>-->
     </build>
-
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
@@ -218,7 +201,7 @@
         <dependency>
             <groupId>com.atlassian.marketplace</groupId>
             <artifactId>marketplace-client-java</artifactId>
-            <version>2.0.5</version>
+            <version>2.0.6</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -295,7 +278,6 @@
             <version>4.10</version>
             <scope>test</scope>
         </dependency>
-
         <!-- WIRED TEST RUNNER DEPENDENCIES -->
         <dependency>
             <groupId>com.atlassian.bamboo</groupId>
@@ -369,5 +351,4 @@
             <version>2.2.2-atlassian-1</version>
         </dependency>
     </dependencies>
-
 </project>

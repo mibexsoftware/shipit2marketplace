@@ -1,6 +1,7 @@
 package ch.mibex.bamboo.shipit.mpac
 
 import java.io.File
+import java.net.URL
 
 import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConnectionError, MpacUploadError}
 import ch.mibex.bamboo.shipit.{Logging, Utils}
@@ -122,6 +123,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .artifact(artifactId)
       .name(newVersionDetails.versionNumber)
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
+      .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
       .build()
     try {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion))
