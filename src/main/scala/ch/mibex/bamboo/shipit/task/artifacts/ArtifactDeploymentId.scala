@@ -41,6 +41,9 @@ object ArtifactDownloaderTaskId {
     ArtifactDownloaderTaskId(definition.getId, definition.getName, task.getId, transferId)
 
   def unapply(s: String): Option[(Long, String, Long, Int)] = s.split(":") match {
+    // e.g.: "v2:58392577:2:0:Plan DSL for Bamboo Plugin"
+    case Array(_, artifactId, downloaderTaskId, transferId, artifactName) =>
+      Some((artifactId.toLong, artifactName, downloaderTaskId.toLong, transferId.toInt))
     case Array(artifactId, artifactName, downloaderTaskId, transferId) =>
       Some((artifactId.toLong, artifactName, downloaderTaskId.toLong, transferId.toInt))
     case _ => None
