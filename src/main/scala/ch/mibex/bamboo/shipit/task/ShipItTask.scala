@@ -181,7 +181,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
         subscribedArtifactCollector.findArtifactInSubscriptions(taskContext, artifactId)
       case ArtifactDownloaderTaskId(artifactId, artifactName, downloaderTaskId, transferId) =>
         buildArtifactCollector.findArtifactInDownloaderTask(taskContext, artifactId, downloaderTaskId, transferId)
-      case _ => throw new TaskException("Artifact deploy ID format unknown")
+      case _ => throw new TaskException(s"Artifact deploy ID format '$artifactToDeployId' unknown")
     }).getOrElse(throw new TaskException("Artifact to deploy setting not found"))
   }
 
