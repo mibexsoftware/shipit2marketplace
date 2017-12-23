@@ -16,7 +16,7 @@
         <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>3.2.2</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>6.2.6</amps.version>
+        <amps.version>6.3.6</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.11.4</scala.version>
         <!-- mpac forces us to use Scala 2.11 -->

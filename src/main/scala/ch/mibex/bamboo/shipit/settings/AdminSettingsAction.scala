@@ -5,12 +5,10 @@ import java.util.{List => JList}
 import ch.mibex.bamboo.shipit.Logging
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade}
 import com.atlassian.bamboo.security.{EncryptionException, EncryptionService}
-import com.atlassian.bamboo.util.BambooStringUtils
-import com.atlassian.struts.ActionSupport
+import com.atlassian.bamboo.ww2.BambooActionSupport
 import com.opensymphony.xwork2.Action
 
 import scala.beans.BeanProperty
-import scala.collection.JavaConverters._
 
 // Bamboo 5.10 doesn't like dependency injection with Spring annotations when using actions:
 // [INFO] [talledLocalContainer] org.springframework.beans.factory.BeanDefinitionStoreException: Failed to parse
@@ -20,7 +18,7 @@ import scala.collection.JavaConverters._
 // We also cannot extend from BambooActionSupport because it uses @AutoWired and Bamboo does not seem to be able
 // to inject these dependencies (see https://answers.atlassian.com/questions/36114574/problem-with-linkeddeploymentprojectcacheservice---autowiring-failed)
 class AdminSettingsAction (encryptionService: EncryptionService,
-                           mpacCredentialsDao: AdminSettingsDao) extends ActionSupport with Logging {
+                           mpacCredentialsDao: AdminSettingsDao) extends BambooActionSupport with Logging {
 
   private val MpacVendorNameField = "vendorName"
   private val MpacVendorPasswordField = "vendorPassword"
@@ -50,13 +48,13 @@ class AdminSettingsAction (encryptionService: EncryptionService,
     }
   }
 
-  def hasActionWarnings = false
-
-  def getFormattedActionErrors: JList[String] =
-    getActionErrors.asScala.map(BambooStringUtils.encodeHtmlWithTagWhiteList).toList.asJava
-
-  def getFormattedActionMessages: JList[String] =
-    getActionMessages.asScala.map(BambooStringUtils.encodeHtmlWithTagWhiteList).toList.asJava
+//  def hasActionWarnings = false
+//
+//  def getFormattedActionErrors: JList[String] =
+//    getActionErrors.asScala.map(BambooStringUtils.encodeHtmlWithTagWhiteList).toList.asJava
+//
+//  def getFormattedActionMessages: JList[String] =
+//    getActionMessages.asScala.map(BambooStringUtils.encodeHtmlWithTagWhiteList).toList.asJava
 
   private def createOrUpdateVendorCredentials() {
     mpacCredentialsDao.createOrUpdate(vendorName, vendorPassword)
@@ -76,7 +74,7 @@ class AdminSettingsAction (encryptionService: EncryptionService,
     }
   }
 
-  def hasAnyErrors = hasErrors
+//  def hasAnyErrors = hasErrors
 
   private def checkMpacConnection() {
     val credentials = MpacCredentials(vendorUserName = vendorName,

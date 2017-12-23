@@ -8,7 +8,7 @@ import net.java.ao.test.jdbc._
 import net.java.ao.test.junit.ActiveObjectsJUnitRunner
 import org.junit.runner.RunWith
 import org.junit.{Before, Test}
-import org.mockito.Matchers._
+import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import org.mockito.invocation.InvocationOnMock
