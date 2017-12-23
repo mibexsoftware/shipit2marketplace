@@ -5,7 +5,7 @@ import java.util
 
 import ch.mibex.bamboo.shipit.Utils
 import com.atlassian.bamboo.plan.artifact.ArtifactDefinitionManager
-import com.atlassian.bamboo.plugin.{ArtifactDownloaderTaskConfigurationHelper, BambooPluginUtils}
+import com.atlassian.bamboo.plugin.{ArtifactDownloaderTaskConfigurationHelper, BambooPluginKeys}
 import com.atlassian.bamboo.task.{CommonTaskContext, TaskDefinition}
 import com.atlassian.bamboo.variable.CustomVariableContext
 import com.atlassian.bamboo.webwork.util.WwSelectOption
@@ -52,8 +52,11 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
     ArtifactDownloaderTaskConfigurationHelper.getRuntimeArtifactIds(artifactDownloaderContext, transferId).asScala
 
   private def getDownloaderContext(taskContext: CommonTaskContext, downloaderTask: TaskDefinition) =
-    taskContext.getCommonContext.getRuntimeTaskContext.getRuntimeContextForTask(downloaderTask)
-
+    taskContext.getCommonContext.getRuntimeTaskDefinitions
+      .asScala
+      .find(_.getPluginKey == downloaderTask.getPluginKey)
+      .getOrElse(throw new IllegalStateException("Downloader task not found"))
+      .getRuntimeContext
 
   def buildArtifactUiList(taskDefinitions: Seq[TaskDefinition]): Seq[WwSelectOption] = {
     case class ArtifactInfo(id: Long, key: String)
@@ -80,6 +83,6 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
   }
 
   private def filterEnabledDownloaderTasks(taskDefinitions: Seq[TaskDefinition])=
-    taskDefinitions.filter(t => t.getPluginKey == BambooPluginUtils.ARTIFACT_DOWNLOAD_TASK_MODULE_KEY && t.isEnabled)
+    taskDefinitions.filter(t => t.getPluginKey == BambooPluginKeys.ARTIFACT_DOWNLOAD_TASK_MODULE_KEY && t.isEnabled)
 
 }
