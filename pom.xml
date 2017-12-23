@@ -13,7 +13,7 @@
     <description>No manual uploads and duplicating release notes anymore - ship your p2 plug-ins to the Atlassian Marketplace with one click</description>
     <packaging>atlassian-plugin</packaging>
     <properties>
-        <bamboo.version>5.7.0</bamboo.version>
+        <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>3.2.2</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
         <amps.version>6.2.6</amps.version>
