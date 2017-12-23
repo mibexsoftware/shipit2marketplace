@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
     <artifactId>shipit2mpac</artifactId>
-    <version>1.2.3</version>
+    <version>1.2.4</version>
     <organization>
         <name>Mibex Software GmbH</name>
         <url>https://www.mibexsoftware.com</url>
