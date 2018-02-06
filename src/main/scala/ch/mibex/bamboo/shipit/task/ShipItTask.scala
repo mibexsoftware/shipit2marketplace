@@ -18,7 +18,7 @@ import com.atlassian.plugin.tool.PluginInfoTool
 import com.atlassian.sal.api.message.I18nResolver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
-
+import scala.collection.JavaConverters._
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
 
@@ -122,7 +122,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
         val successMsg = i18nResolver.getText("shipit.task.successfully.shipped",
-                                              newVersion.getName, newPluginVersion.plugin.getName)
+                                              newVersion.getName.getOrElse("?"), newPluginVersion.plugin.getName)
         buildLogger.addBuildLogEntry(successMsg)
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build
