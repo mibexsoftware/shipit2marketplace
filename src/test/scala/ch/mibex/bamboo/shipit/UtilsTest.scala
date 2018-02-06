@@ -15,10 +15,22 @@ class UtilsTest extends Specification {
     "yield a build number padded with zeroes" in {
       Utils.toBuildNumber("1.2.3") must_== 100200300
       Utils.toBuildNumber("11.0.0") must_== 110000000
+      Utils.toBuildNumber("11.1.1") must_== 110100100
+      Utils.toBuildNumber("11.1.10") must_== 110101000
       Utils.toBuildNumber("0.0.1") must_== 100
       Utils.toBuildNumber("1.0") must_== 100000000
       Utils.toBuildNumber("2.0") must_== 200000000
       Utils.toBuildNumber("1.2.3-SNAPSHOT") must_== 100200300
+      Utils.toBuildNumber("5.2.9") must_== 500200900
+      Utils.toBuildNumber("5.2.10") must_== 500201000
+      Utils.toBuildNumber("5.200.1") must_== 520000100
+      Utils.toBuildNumber("5.20.1") must_== 502000100
+      Utils.toBuildNumber("5.20.10") must_== 502001000
+      Utils.toBuildNumber("5.200.10") must_== 520001000
+      Utils.toBuildNumber("5.200.100") must_== 520010000
+      Utils.toBuildNumber("5.2.100") must_== 500210000
+      Utils.toBuildNumber("5.2.99") must_== 500209900
+      Utils.toBuildNumber("5.20.99") must_== 502009900
     }
 
     "convert a Scala map to json" in {

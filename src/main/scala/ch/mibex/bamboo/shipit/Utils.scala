@@ -14,7 +14,7 @@ import scala.collection.JavaConverters._
 
 object Utils {
 
-  // we circumvent the type-safety of Spray here but it is otherwise to cumbersome to just get a
+  // we circumvent the type-safety of Spray here but it is otherwise too cumbersome to just get a
   // few values out of a deeply nested JSON tree
   implicit object AnyJsonFormat extends JsonFormat[Any] {
 
@@ -73,11 +73,19 @@ object Utils {
 
   def toBuildNumber(versionString: String) = {
     val version = new DefaultArtifactVersion(versionString)
-    val buildNr = Array(version.getMajorVersion, version.getMinorVersion, version.getIncrementalVersion)
-      .map(v => "%-3s".format(v).replace(' ', '0'))
-      .mkString("")
-      .toInt
-    buildNr
+
+    val inc = version.getIncrementalVersion
+    val numDigitsInc = String.valueOf(inc).length()
+    val incStr = s"%-${numDigitsInc + 2}s".format(inc).replace(' ', '0')
+
+    val minor = version.getMinorVersion
+    val numDigitsMinor = String.valueOf(minor).length()
+    val minorStr = s"%-${3 - numDigitsInc + numDigitsMinor}s".format(minor).replace(' ', '0')
+
+    val major = version.getMajorVersion
+    val majorStr = s"%-${9 - (incStr.length + minorStr.length)}s".format(major).replace(' ', '0')
+
+    (majorStr + minorStr + incStr).toInt
   }
 
   // Use like this:
