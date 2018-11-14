@@ -8,6 +8,7 @@ object Constants {
   object BambooVariables {
     val BambooJiraVersionVariableKey = "shipit2mpac.jiraversion"
     val BambooBuildNrVariableKey = "shipit2mpac.buildnr"
+    val BambooDataCenterBuildNrVariableKey = "shipit2mpac.datacenter.buildnr"
     val BambooReleaseNotesVariableKey = "shipit2mpac.release.notes"
     val BambooReleaseSummaryVariableKey = "shipit2mpac.release.summary"
     val BambooPluginBaseVersionVariableKey = "shipit2mpac.plugin.base.version"

@@ -3,6 +3,7 @@ package ch.mibex.bamboo.shipit.task
 import java.io.File
 import java.util.concurrent.Callable
 
+import ch.mibex.bamboo.shipit.Constants.BambooVariables.BambooBuildNrVariableKey
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.NewPluginVersionDetails
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
@@ -13,6 +14,7 @@ import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
 import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
+import com.atlassian.plugin.marketing.bean.PluginMarketing
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.plugin.tool.PluginArtifactDetails
 import com.atlassian.sal.api.message.I18nResolver
@@ -37,24 +39,32 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
   lazy val FullyQualifiedPluginTaskKey = s"${Utils.findPluginKeyInDescriptor()}:$PluginTaskKey"
 
   def collectData(taskContext: CommonTaskContext,
-                  commonContext: CommonContext,
+                  context: CommonContext,
                   artifact: File,
                   baseVersion: AddonVersion,
+                  pluginMarketing: PluginMarketing,
                   pluginInfo: PluginArtifactDetails,
                   plugin: Addon): NewPluginVersionDetails = {
-    val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, commonContext)
-    val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, commonContext, taskContext)
+    val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
+    val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
       throw new TaskException("Public version setting not found")
     ).toBoolean
     val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
+    val compatibility = pluginMarketing.getCompatibility.get(0)
     NewPluginVersionDetails(
       plugin = plugin,
-      userName = getJiraTriggerUser(commonContext),
+      userName = getJiraTriggerUser(context),
       baseVersion = baseVersion,
-      buildNumber = determineBuildNumber(commonContext, deduceBuildNr, pluginInfo),
+      serverBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooBuildNrVariableKey),
+      dataCenterBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooDataCenterBuildNrVariableKey),
+      minServerBuildNumber = Utils.toBuildNumber(compatibility.getMin, shortVersion = true),
+      maxServerBuildNumber = Utils.toBuildNumber(compatibility.getMax, shortVersion = true),
+      minDataCenterBuildNumber = Utils.toBuildNumber(compatibility.getMin, shortVersion = true),
+      maxDataCenterBuildNumber = Utils.toBuildNumber(compatibility.getMax, shortVersion = true),
+      baseProduct = compatibility.getProduct.name(),
       versionNumber = pluginInfo.getVersion,
       binary = artifact,
       isPublicVersion = isPublicVersion,
@@ -113,9 +123,10 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def determineBuildNumber(commonContext: CommonContext,
                                    deduceBuildNr: Boolean,
-                                   pluginInfo: PluginArtifactDetails) = {
+                                   pluginInfo: PluginArtifactDetails,
+                                   bambooBuildNrVariableKey: String) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
-    Option(vars.get(BambooBuildNrVariableKey)) match {
+    Option(vars.get(bambooBuildNrVariableKey)) match {
       case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
         // Bamboo variable has always precedence
         buildNr.getValue.toInt
@@ -123,7 +134,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
         throw new TaskException(
-          s"""A build number has to be specified with the Bamboo variable '$BambooBuildNrVariableKey'
+          s"""A build number has to be specified with the Bamboo variable '$bambooBuildNrVariableKey'
               |if the build number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
         )
     }

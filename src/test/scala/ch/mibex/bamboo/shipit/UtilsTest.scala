@@ -33,6 +33,12 @@ class UtilsTest extends Specification {
       Utils.toBuildNumber("5.20.99") must_== 502009900
     }
 
+    "yield a short build number padded with zeroes" in {
+//      Utils.toBuildNumber("1.2.3", shortVersion = true) must_== 1200300
+      Utils.toBuildNumber("5.0.0", shortVersion = true) must_== 5000000
+      Utils.toBuildNumber("5.15.0", shortVersion = true) must_== 5015000
+    }
+
     "convert a Scala map to json" in {
       Utils.map2Json(Map("test" -> Map("theAnswer" -> 42, "isTrue" -> true))) must_==
         """{"test":{"theAnswer":42,"isTrue":true}}"""

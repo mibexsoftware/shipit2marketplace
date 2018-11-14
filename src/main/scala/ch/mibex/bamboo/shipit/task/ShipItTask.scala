@@ -1,5 +1,7 @@
 package ch.mibex.bamboo.shipit.task
 
+import java.io.FileInputStream
+
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
@@ -18,7 +20,6 @@ import com.atlassian.plugin.tool.PluginInfoTool
 import com.atlassian.sal.api.message.I18nResolver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
-import scala.collection.JavaConverters._
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
 
@@ -63,7 +64,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.branch.builds.not.enabled"))
       taskBuilder.success.build
     } else if (isOnlyDeployFromJiraReleasePanelAllowed(taskContext)
-        && !(isTriggeredFromJira(commonContext) && isAllowedTriggerReason(commonContext.getTriggerReason))) {
+      && !(isTriggeredFromJira(commonContext) && isAllowedTriggerReason(commonContext.getTriggerReason))) {
       buildLogger.addBuildLogEntry(i18nResolver.getText("shipit.task.not.triggered.from.jira"))
       // we should not fail the build in this case because this could be a plan branch which should
       // not result in a Marketplace deployment
@@ -88,7 +89,16 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-
+      val is = new FileInputStream(artifact)
+      val pluginMarketing =
+        try {
+          PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean
+        } finally {
+          is.close()
+        }
+      require(Option(pluginMarketing).isDefined,
+        "No marketing data found in plug-in artifact. Do you have a atlassian-plugin-marketing.xml file in your plug-in?"
+      )
       mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
@@ -96,11 +106,12 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
         case Right(Some(plugin)) =>
           findBaseVersionForNewSubmission(plugin.getKey, commonContext, mpac) match {
             case Left(error) =>
-              buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
+              val msg = i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey, i18nResolver.getText(error.i18n))
+              buildLogger.addErrorLogEntry(msg)
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
               val newPluginVersion = newPluginDataCollector.collectData(
-                taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin
+                taskContext, commonContext, artifact, baseVersion, pluginMarketing, pluginInfo, plugin
               )
               uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>
@@ -113,6 +124,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       }
     }
 
+
   private def uploadNewPluginVersion(taskContext: CommonTaskContext,
                                      taskBuilder: TaskResultBuilder,
                                      buildLogger: BuildLogger,
@@ -122,7 +134,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
         val successMsg = i18nResolver.getText("shipit.task.successfully.shipped",
-                                              newVersion.getName.getOrElse("?"), newPluginVersion.plugin.getName)
+          newVersion.getName.getOrElse("?"), newPluginVersion.plugin.getName)
         buildLogger.addBuildLogEntry(successMsg)
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build

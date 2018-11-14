@@ -71,23 +71,22 @@ object Utils {
     rawArtifacts.reduceOption(lastModified.max)
   }
 
-  def toBuildNumber(versionString: String) = {
+  def toBuildNumber(versionString: String, shortVersion: Boolean = false) = {
     val version = new DefaultArtifactVersion(versionString)
 
     val inc = version.getIncrementalVersion
     val numDigitsInc = String.valueOf(inc).length()
-    val incStr = s"%-${numDigitsInc + 2}s".format(inc).replace(' ', '0')
+    val incStr = s"%-${numDigitsInc + (if (shortVersion) 0 else 2)}s".format(inc).replace(' ', '0')
 
     val minor = version.getMinorVersion
     val numDigitsMinor = String.valueOf(minor).length()
     val minorStr = s"%-${3 - numDigitsInc + numDigitsMinor}s".format(minor).replace(' ', '0')
 
     val major = version.getMajorVersion
-    val majorStr = s"%-${9 - (incStr.length + minorStr.length)}s".format(major).replace(' ', '0')
+    val majorStr = s"%-${(if (shortVersion) 7 else 9) - (incStr.length + minorStr.length)}s".format(major).replace(' ', '0')
 
     (majorStr + minorStr + incStr).toInt
   }
-
   // Use like this:
   // import Utils.functionToUncheckedOp
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({

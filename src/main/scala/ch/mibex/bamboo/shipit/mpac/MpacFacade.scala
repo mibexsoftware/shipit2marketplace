@@ -3,8 +3,8 @@ package ch.mibex.bamboo.shipit.mpac
 import java.io.File
 import java.net.URL
 
+import ch.mibex.bamboo.shipit.Logging
 import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConnectionError, MpacUploadError}
-import ch.mibex.bamboo.shipit.{Logging, Utils}
 import com.atlassian.fugue
 import com.atlassian.marketplace.client.api._
 import com.atlassian.marketplace.client.http.HttpConfiguration
@@ -12,13 +12,20 @@ import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
+import scala.collection.JavaConverters._
 
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
 case class NewPluginVersionDetails(plugin: Addon,
                                    baseVersion: AddonVersion,
-                                   buildNumber: Int,
+                                   serverBuildNumber: Int,
+                                   dataCenterBuildNumber: Long,
+                                   minServerBuildNumber: Int,
+                                   maxServerBuildNumber: Int,
+                                   minDataCenterBuildNumber: Int,
+                                   maxDataCenterBuildNumber: Int,
                                    versionNumber: String,
+                                   baseProduct: String,
                                    userName: Option[String],
                                    binary: File,
                                    isPublicVersion: Boolean,
@@ -27,8 +34,14 @@ case class NewPluginVersionDetails(plugin: Addon,
   override def toString: String =
     s"""plugin=${plugin.getKey},
         |baseVersion=${baseVersion.getName},
-        |buildNumber=$buildNumber,
+        |minServerBuildNumber=$minServerBuildNumber,
+        |maxServerBuildNumber=$maxServerBuildNumber,
+        |minDataCenterBuildNumber=$minDataCenterBuildNumber,
+        |maxDataCenterBuildNumber=$maxDataCenterBuildNumber,
+        |baseProduct=$baseProduct,
         |versionNumber=$versionNumber,
+        |serverBuildNumber=$serverBuildNumber,
+        |dataCenterBuildNumber=$dataCenterBuildNumber,
         |userName=${userName.getOrElse("")},
         |isPublicVersion=$isPublicVersion,
         |releaseSummary=$releaseSummary,
@@ -118,7 +131,16 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .releaseSummary(newVersionDetails.releaseSummary)
       .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
       .releaseDate(new org.joda.time.LocalDate())
-      .buildNumber(newVersionDetails.buildNumber)
+      .buildNumber(newVersionDetails.serverBuildNumber)
+      .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+      .compatibilities(List(
+        ModelBuilders.versionCompatibilityForServerAndDataCenter(
+          ApplicationKey.valueOf(newVersionDetails.baseProduct),
+          newVersionDetails.minServerBuildNumber, // Server version min compatibility
+          newVersionDetails.maxServerBuildNumber, // Server version max compatibility
+          newVersionDetails.minDataCenterBuildNumber, // DC version min compatibility
+          newVersionDetails.maxDataCenterBuildNumber) // DC version max compatibility
+        ).asJava)
       .releasedBy(newVersionDetails.userName)
       .artifact(artifactId)
       .name(newVersionDetails.versionNumber)
