@@ -3,7 +3,6 @@ package ch.mibex.bamboo.shipit.task
 import java.io.File
 import java.util.concurrent.Callable
 
-import ch.mibex.bamboo.shipit.Constants.BambooVariables.BambooBuildNrVariableKey
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.NewPluginVersionDetails
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
@@ -54,6 +53,8 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
     val compatibility = pluginMarketing.getCompatibility.get(0)
+    val vars = context.getVariableContext.getEffectiveVariables
+    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)).isDefined
     NewPluginVersionDetails(
       plugin = plugin,
       userName = getJiraTriggerUser(context),
@@ -66,6 +67,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       maxDataCenterBuildNumber = Utils.toBuildNumber(compatibility.getMax, shortVersion = true),
       baseProduct = compatibility.getProduct.name(),
       versionNumber = pluginInfo.getVersion,
+      isDcBuildNrConfigured = isDcBuildNrConfigured,
       binary = artifact,
       isPublicVersion = isPublicVersion,
       releaseSummary = releaseSummaryAndDescription.summary,
