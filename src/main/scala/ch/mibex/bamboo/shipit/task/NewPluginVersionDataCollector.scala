@@ -54,7 +54,10 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     ).toBoolean
     val compatibility = pluginMarketing.getCompatibility.get(0)
     val vars = context.getVariableContext.getEffectiveVariables
-    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)).isDefined
+    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
+      case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
+      case None => false
+    }
     NewPluginVersionDetails(
       plugin = plugin,
       userName = getJiraTriggerUser(context),
