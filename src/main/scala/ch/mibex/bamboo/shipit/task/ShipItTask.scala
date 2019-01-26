@@ -92,13 +92,14 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       val is = new FileInputStream(artifact)
       val pluginMarketing =
         try {
-          PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean
+          Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
+        } catch {
+          case e: Exception =>
+            debug("SHIPIT2MARKETPLACE: failed to get marketing plug-in details from JAR", e)
+            None // we don't necessarily need the marketing plug-in details if non-dc deployment
         } finally {
           is.close()
         }
-      require(Option(pluginMarketing).isDefined,
-        "No marketing data found in plug-in artifact. Do you have a atlassian-plugin-marketing.xml file in your plug-in?"
-      )
       mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
@@ -111,7 +112,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
               val newPluginVersion = newPluginDataCollector.collectData(
-                taskContext, commonContext, artifact, baseVersion, pluginMarketing, pluginInfo, plugin
+                taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin, pluginMarketing
               )
               uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>

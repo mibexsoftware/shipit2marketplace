@@ -20,12 +20,12 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    baseVersion: AddonVersion,
                                    serverBuildNumber: Int,
                                    dataCenterBuildNumber: Long,
-                                   minServerBuildNumber: Int,
-                                   maxServerBuildNumber: Int,
-                                   minDataCenterBuildNumber: Int,
-                                   maxDataCenterBuildNumber: Int,
+                                   minServerBuildNumber: Option[Int],
+                                   maxServerBuildNumber: Option[Int],
+                                   minDataCenterBuildNumber: Option[Int],
+                                   maxDataCenterBuildNumber: Option[Int],
                                    versionNumber: String,
-                                   baseProduct: String,
+                                   baseProduct: Option[String],
                                    isDcBuildNrConfigured: Boolean,
                                    userName: Option[String],
                                    binary: File,
@@ -139,15 +139,24 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
       .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
     if (newVersionDetails.isDcBuildNrConfigured) {
-      addonVersion = addonVersion.compatibilities(List(
-          ModelBuilders.versionCompatibilityForServerAndDataCenter(
-            ApplicationKey.valueOf(newVersionDetails.baseProduct),
-            newVersionDetails.minServerBuildNumber, // Server version min compatibility
-            newVersionDetails.maxServerBuildNumber, // Server version max compatibility
-            newVersionDetails.minDataCenterBuildNumber, // DC version min compatibility
-            newVersionDetails.maxDataCenterBuildNumber) // DC version max compatibility
-        ).asJava)
-        .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+      (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber,
+        newVersionDetails.maxServerBuildNumber, newVersionDetails.minDataCenterBuildNumber,
+        newVersionDetails.maxDataCenterBuildNumber) match {
+        case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber),
+              Some(minDataCenterBuildNumber), Some(maxDataCenterBuildNumber)) =>
+          addonVersion = addonVersion.compatibilities(List(
+            ModelBuilders.versionCompatibilityForServerAndDataCenter(
+              ApplicationKey.valueOf(baseProduct),
+              minServerBuildNumber, // Server version min compatibility
+              maxServerBuildNumber, // Server version max compatibility
+              minDataCenterBuildNumber, // DC version min compatibility
+              maxDataCenterBuildNumber) // DC version max compatibility
+          ).asJava)
+            .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+        case _ =>
+          throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
+      }
+
     }
     try {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion.build()))
