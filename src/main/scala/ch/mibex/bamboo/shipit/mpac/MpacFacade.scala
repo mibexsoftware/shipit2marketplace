@@ -126,6 +126,23 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
   def publish(newVersionDetails: NewPluginVersionDetails): Either[MpacError, AddonVersion] = {
     // see https://docs.atlassian.com/marketplace-client-java/2.0.0-m4/apidocs/index.html
+    var addonVersion = prepareAddonVersion(newVersionDetails)
+    try {
+      Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion.build()))
+    } catch {
+      case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to server error", e)
+        Left(MpacAuthenticationError())
+      case e: MpacException.ConnectionFailure =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to connection failure", e)
+        Left(MpacConnectionError())
+      case e: MpacException =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to unknown error", e)
+        Left(MpacUploadError(e.getMessage))
+    }
+  }
+
+  private def prepareAddonVersion(newVersionDetails: NewPluginVersionDetails) = {
     val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
     var addonVersion = ModelBuilders
       .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
@@ -156,21 +173,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         case _ =>
           throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
       }
-
     }
-    try {
-      Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion.build()))
-    } catch {
-      case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to server error", e)
-        Left(MpacAuthenticationError())
-      case e: MpacException.ConnectionFailure =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to connection failure", e)
-        Left(MpacConnectionError())
-      case e: MpacException =>
-        log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to unknown error", e)
-        Left(MpacUploadError(e.getMessage))
-    }
+    addonVersion
   }
 
   def checkCredentials(): Option[MpacError] = {

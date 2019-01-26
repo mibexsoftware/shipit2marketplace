@@ -58,7 +58,7 @@ object Utils {
     }
   }
 
-  def findMostRecentMatchingFile(filePattern: String, localPath: File) = {
+  def findMostRecentMatchingFile(filePattern: String, localPath: File): Option[File] = {
     var rawArtifacts = Vector.empty[File]
     val namesVisitor = new FileVisitor(localPath) {
       override def visitFile(file: File): Unit = {
@@ -71,7 +71,7 @@ object Utils {
     rawArtifacts.reduceOption(lastModified.max)
   }
 
-  def toBuildNumber(versionString: String, shortVersion: Boolean = false) = {
+  def toBuildNumber(versionString: String, shortVersion: Boolean = false): Int = {
     val version = new DefaultArtifactVersion(versionString)
 
     val inc = version.getIncrementalVersion
@@ -92,7 +92,7 @@ object Utils {
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({
   //   // code to run with security context
   // })
-  implicit def functionToUncheckedOp[T](f : => T) = new Callable[T] {
+  implicit def functionToUncheckedOp[T](f : => T): Callable[T] = new Callable[T] {
     override def call() = f
   }
 
