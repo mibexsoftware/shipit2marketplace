@@ -57,7 +57,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
-    val compatibility = pluginMarketing.map(c => c.getCompatibility.get(0))
+    val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
     NewPluginVersionDetails(
       plugin = plugin,
       userName = getJiraTriggerUser(context),
@@ -68,7 +68,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       maxServerBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
       minDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMin, shortVersion = true)),
       maxDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
-      baseProduct = compatibility.map(c => c.getProduct.name()),
+      baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
       binary = artifact,

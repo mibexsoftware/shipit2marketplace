@@ -1,6 +1,6 @@
 package ch.mibex.bamboo.shipit.task
 
-import java.io.FileInputStream
+import java.io.{File, FileInputStream}
 
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
@@ -89,17 +89,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
-      val is = new FileInputStream(artifact)
-      val pluginMarketing =
-        try {
-          Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
-        } catch {
-          case e: Exception =>
-            debug("SHIPIT2MARKETPLACE: failed to get marketing plug-in details from JAR", e)
-            None // we don't necessarily need the marketing plug-in details if non-dc deployment
-        } finally {
-          is.close()
-        }
       mpac.findPlugin(pluginInfo.getKey) match {
         case Left(error) =>
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
@@ -111,6 +100,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               buildLogger.addErrorLogEntry(msg)
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
+              val pluginMarketing = getPluginMarketingInfo(artifact)
               val newPluginVersion = newPluginDataCollector.collectData(
                 taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin, pluginMarketing
               )
@@ -125,6 +115,18 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       }
     }
 
+  private def getPluginMarketingInfo(artifact: File) = {
+    val is = new FileInputStream(artifact)
+    try {
+      Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
+    } catch {
+      case e: Exception =>
+        debug("SHIPIT2MARKETPLACE: failed to get marketing plug-in details from JAR", e)
+        None // we don't necessarily need the marketing plug-in details if non-dc deployment
+    } finally {
+      is.close()
+    }
+  }
 
   private def uploadNewPluginVersion(taskContext: CommonTaskContext,
                                      taskBuilder: TaskResultBuilder,
