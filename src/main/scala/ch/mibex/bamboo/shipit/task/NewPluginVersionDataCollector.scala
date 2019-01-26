@@ -41,9 +41,9 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
                   context: CommonContext,
                   artifact: File,
                   baseVersion: AddonVersion,
-                  pluginMarketing: PluginMarketing,
                   pluginInfo: PluginArtifactDetails,
-                  plugin: Addon): NewPluginVersionDetails = {
+                  plugin: Addon,
+                  pluginMarketing: Option[PluginMarketing]): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
     val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
@@ -52,23 +52,23 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
-    val compatibility = pluginMarketing.getCompatibility.get(0)
     val vars = context.getVariableContext.getEffectiveVariables
     val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
+    val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
     NewPluginVersionDetails(
       plugin = plugin,
       userName = getJiraTriggerUser(context),
       baseVersion = baseVersion,
       serverBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooBuildNrVariableKey),
       dataCenterBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooDataCenterBuildNrVariableKey),
-      minServerBuildNumber = Utils.toBuildNumber(compatibility.getMin, shortVersion = true),
-      maxServerBuildNumber = Utils.toBuildNumber(compatibility.getMax, shortVersion = true),
-      minDataCenterBuildNumber = Utils.toBuildNumber(compatibility.getMin, shortVersion = true),
-      maxDataCenterBuildNumber = Utils.toBuildNumber(compatibility.getMax, shortVersion = true),
-      baseProduct = compatibility.getProduct.name(),
+      minServerBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMin, shortVersion = true)),
+      maxServerBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
+      minDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMin, shortVersion = true)),
+      maxDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
+      baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
       binary = artifact,

@@ -20,12 +20,12 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    baseVersion: AddonVersion,
                                    serverBuildNumber: Int,
                                    dataCenterBuildNumber: Long,
-                                   minServerBuildNumber: Int,
-                                   maxServerBuildNumber: Int,
-                                   minDataCenterBuildNumber: Int,
-                                   maxDataCenterBuildNumber: Int,
+                                   minServerBuildNumber: Option[Int],
+                                   maxServerBuildNumber: Option[Int],
+                                   minDataCenterBuildNumber: Option[Int],
+                                   maxDataCenterBuildNumber: Option[Int],
                                    versionNumber: String,
-                                   baseProduct: String,
+                                   baseProduct: Option[String],
                                    isDcBuildNrConfigured: Boolean,
                                    userName: Option[String],
                                    binary: File,
@@ -126,29 +126,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
   def publish(newVersionDetails: NewPluginVersionDetails): Either[MpacError, AddonVersion] = {
     // see https://docs.atlassian.com/marketplace-client-java/2.0.0-m4/apidocs/index.html
-    val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
-    var addonVersion = ModelBuilders
-      .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
-      .releaseSummary(newVersionDetails.releaseSummary)
-      .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
-      .releaseDate(new org.joda.time.LocalDate())
-      .buildNumber(newVersionDetails.serverBuildNumber)
-      .releasedBy(newVersionDetails.userName)
-      .artifact(artifactId)
-      .name(newVersionDetails.versionNumber)
-      .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
-      .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
-    if (newVersionDetails.isDcBuildNrConfigured) {
-      addonVersion = addonVersion.compatibilities(List(
-          ModelBuilders.versionCompatibilityForServerAndDataCenter(
-            ApplicationKey.valueOf(newVersionDetails.baseProduct),
-            newVersionDetails.minServerBuildNumber, // Server version min compatibility
-            newVersionDetails.maxServerBuildNumber, // Server version max compatibility
-            newVersionDetails.minDataCenterBuildNumber, // DC version min compatibility
-            newVersionDetails.maxDataCenterBuildNumber) // DC version max compatibility
-        ).asJava)
-        .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
-    }
+    var addonVersion = prepareAddonVersion(newVersionDetails)
     try {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion.build()))
     } catch {
@@ -162,6 +140,41 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         log.error(s"SHIPIT2MARKETPLACE: failed to publish plug-in due to unknown error", e)
         Left(MpacUploadError(e.getMessage))
     }
+  }
+
+  private def prepareAddonVersion(newVersionDetails: NewPluginVersionDetails) = {
+    val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
+    var addonVersion = ModelBuilders
+      .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
+      .releaseSummary(newVersionDetails.releaseSummary)
+      .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
+      .releaseDate(new org.joda.time.LocalDate())
+      .buildNumber(newVersionDetails.serverBuildNumber)
+      .releasedBy(newVersionDetails.userName)
+      .artifact(artifactId)
+      .name(newVersionDetails.versionNumber)
+      .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
+      .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
+    if (newVersionDetails.isDcBuildNrConfigured) {
+      (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber,
+        newVersionDetails.maxServerBuildNumber, newVersionDetails.minDataCenterBuildNumber,
+        newVersionDetails.maxDataCenterBuildNumber) match {
+        case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber),
+              Some(minDataCenterBuildNumber), Some(maxDataCenterBuildNumber)) =>
+          addonVersion = addonVersion.compatibilities(List(
+            ModelBuilders.versionCompatibilityForServerAndDataCenter(
+              ApplicationKey.valueOf(baseProduct),
+              minServerBuildNumber, // Server version min compatibility
+              maxServerBuildNumber, // Server version max compatibility
+              minDataCenterBuildNumber, // DC version min compatibility
+              maxDataCenterBuildNumber) // DC version max compatibility
+          ).asJava)
+            .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+        case _ =>
+          throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
+      }
+    }
+    addonVersion
   }
 
   def checkCredentials(): Option[MpacError] = {
