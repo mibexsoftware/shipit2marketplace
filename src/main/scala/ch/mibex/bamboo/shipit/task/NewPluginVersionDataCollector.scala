@@ -57,6 +57,14 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
+    pluginMarketing match {
+      case None if isDcBuildNrConfigured =>
+        throw new TaskException("DC app deployment requires an atlassian-plugin-marketing.xml in our JAR")
+      case Some(pm) if isDcBuildNrConfigured && pm.getCompatibility.isEmpty =>
+        throw new TaskException("DC app deployment requires a <compatibility> section in your atlassian-plugin-marketing.xml")
+      case Some(pm) => pm.validate()
+      case _ => // all good
+    }
     val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
     NewPluginVersionDetails(
       plugin = plugin,

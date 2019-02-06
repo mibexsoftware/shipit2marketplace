@@ -119,10 +119,6 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     val is = new FileInputStream(artifact)
     try {
       Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
-    } catch {
-      case e: Exception =>
-        debug("SHIPIT2MARKETPLACE: failed to get marketing plug-in details from JAR", e)
-        None // we don't necessarily need the marketing plug-in details if non-dc deployment
     } finally {
       is.close()
     }
