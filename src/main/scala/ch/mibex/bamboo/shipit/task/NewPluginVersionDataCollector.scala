@@ -88,7 +88,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def deduceBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) = {
     compatibility match {
-      case Some(c) if c.getProduct == ProductEnum.BITBUCKET =>
+      case Some(c) if c.getProduct == ProductEnum.BITBUCKET || c.getProduct == ProductEnum.BAMBOO =>
         Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
       case Some(c) if c.getMin.nonEmpty && c.getMax.nonEmpty =>
         // other product's like Confluence has build numbers that cannot be deduced from the version number
