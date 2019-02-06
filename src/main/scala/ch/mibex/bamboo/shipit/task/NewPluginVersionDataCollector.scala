@@ -90,8 +90,10 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     compatibility match {
       case Some(c) if c.getProduct == ProductEnum.BITBUCKET =>
         Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
-      case _ => // other product's like Confluence has build numbers that cannot be deduced from the version number
-        None
+      case Some(c) if c.getMin.nonEmpty && c.getMax.nonEmpty =>
+        // other product's like Confluence has build numbers that cannot be deduced from the version number
+        if (isMin) Option(c.getMin.toInt) else Option(c.getMax.toInt)
+      case _ => None
     }
   }
 
