@@ -13,7 +13,7 @@ import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
 import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
-import com.atlassian.plugin.marketing.bean.PluginMarketing
+import com.atlassian.plugin.marketing.bean.{PluginMarketing, ProductCompatibility, ProductEnum}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.plugin.tool.PluginArtifactDetails
 import com.atlassian.sal.api.message.I18nResolver
@@ -72,10 +72,10 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       baseVersion = baseVersion,
       serverBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooBuildNrVariableKey),
       dataCenterBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooDataCenterBuildNrVariableKey),
-      minServerBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMin, shortVersion = true)),
-      maxServerBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
-      minDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMin, shortVersion = true)),
-      maxDataCenterBuildNumber = compatibility.map(c => Utils.toBuildNumber(c.getMax, shortVersion = true)),
+      minServerBuildNumber = deduceBuildNumber(compatibility, isMin = true),
+      maxServerBuildNumber = deduceBuildNumber(compatibility, isMin = false),
+      minDataCenterBuildNumber = deduceBuildNumber(compatibility, isMin = true),
+      maxDataCenterBuildNumber = deduceBuildNumber(compatibility, isMin = false),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
@@ -84,6 +84,15 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       releaseSummary = releaseSummaryAndDescription.summary,
       releaseNotes = releaseSummaryAndDescription.releaseNotes
     )
+  }
+
+  private def deduceBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) = {
+    compatibility match {
+      case Some(c) if c.getProduct == ProductEnum.BITBUCKET =>
+        Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
+      case _ => // other product's like Confluence has build numbers that cannot be deduced from the version number
+        None
+    }
   }
 
   private def collectReleaseNotes(projectInfos: JiraProjectData,
