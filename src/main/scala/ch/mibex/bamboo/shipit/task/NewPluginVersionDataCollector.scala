@@ -92,7 +92,14 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
       case Some(c) if c.getMin.nonEmpty && c.getMax.nonEmpty =>
         // other product's like Confluence has build numbers that cannot be deduced from the version number
-        if (isMin) Option(c.getMin.toInt) else Option(c.getMax.toInt)
+        try {
+          if (isMin) Option(c.getMin.toInt) else Option(c.getMax.toInt)
+        } catch {
+          case e: NumberFormatException if c.getProduct == ProductEnum.CONFLUENCE =>
+            throw new TaskException("Compatibility range version numbers cannot be deduced for Confluence. " +
+              "Please use the Confluence build numbers from the Marketplace instead, e.g., 10233 for 6.14.1.", e)
+          case e: Exception => throw e
+        }
       case _ => None
     }
   }
