@@ -27,6 +27,7 @@ case class NewPluginVersionDetails(plugin: Addon,
                                    versionNumber: String,
                                    baseProduct: Option[String],
                                    isDcBuildNrConfigured: Boolean,
+                                   createDcVersionToo: Boolean,
                                    userName: Option[String],
                                    binary: File,
                                    isPublicVersion: Boolean,
@@ -41,6 +42,8 @@ case class NewPluginVersionDetails(plugin: Addon,
         |maxDataCenterBuildNumber=$maxDataCenterBuildNumber,
         |baseProduct=$baseProduct,
         |versionNumber=$versionNumber,
+        |isDcBuildNrConfigured=$isDcBuildNrConfigured,
+        |createDcVersionToo=$createDcVersionToo,
         |serverBuildNumber=$serverBuildNumber,
         |dataCenterBuildNumber=$dataCenterBuildNumber,
         |userName=${userName.getOrElse("")},
@@ -126,7 +129,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
   def publish(newVersionDetails: NewPluginVersionDetails): Either[MpacError, AddonVersion] = {
     // see https://docs.atlassian.com/marketplace-client-java/2.0.0-m4/apidocs/index.html
-    var addonVersion = prepareAddonVersion(newVersionDetails)
+    val addonVersion = prepareAddonVersion(newVersionDetails)
     try {
       Right(client.addons().createVersion(newVersionDetails.plugin.getKey, addonVersion.build()))
     } catch {
@@ -155,7 +158,9 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .name(newVersionDetails.versionNumber)
       .status(if (newVersionDetails.isPublicVersion) AddonVersionStatus.PUBLIC else AddonVersionStatus.PRIVATE)
       .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
-    if (newVersionDetails.isDcBuildNrConfigured) {
+
+    // for DC, configure both DC and server host compatibility
+    if (newVersionDetails.createDcVersionToo || newVersionDetails.isDcBuildNrConfigured) {
       (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber,
         newVersionDetails.maxServerBuildNumber, newVersionDetails.minDataCenterBuildNumber,
         newVersionDetails.maxDataCenterBuildNumber) match {
@@ -171,7 +176,22 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
           ).asJava)
             .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
         case _ =>
+          // without the product version compatibility for both server and DC, we get the following error:
+          // compatibilities: Must have at least one item.
           throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
+      }
+    } else {
+      // if specified in the atlassian-plugin-marketing.xml, also take the server host compatiblity
+      (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber, newVersionDetails.maxServerBuildNumber) match {
+        case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber)) =>
+          addonVersion = addonVersion.compatibilities(
+            List(ModelBuilders.versionCompatibilityForServer(
+              ApplicationKey.valueOf(baseProduct),
+              minServerBuildNumber, // Server version min compatibility
+              maxServerBuildNumber // Server version max compatibility
+            )).asJava
+          )
+        case _ =>
       }
     }
     addonVersion
