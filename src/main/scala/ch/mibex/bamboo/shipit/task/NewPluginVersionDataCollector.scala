@@ -8,7 +8,7 @@ import ch.mibex.bamboo.shipit.mpac.NewPluginVersionDetails
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
 import com.atlassian.applinks.api.CredentialsRequiredException
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
-import com.atlassian.bamboo.task.{CommonTaskContext, TaskDefinition, TaskException}
+import com.atlassian.bamboo.task.{CommonTaskContext, TaskContext, TaskDefinition, TaskException}
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
@@ -57,10 +57,13 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
+    val createDcDeploymentToo =
+      Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false)
+
     pluginMarketing match {
-      case None if isDcBuildNrConfigured =>
+      case None if isDcBuildNrConfigured || createDcDeploymentToo =>
         throw new TaskException("DC app deployment requires an atlassian-plugin-marketing.xml in our JAR")
-      case Some(pm) if isDcBuildNrConfigured && pm.getCompatibility.isEmpty =>
+      case Some(pm) if (isDcBuildNrConfigured || createDcDeploymentToo) && pm.getCompatibility.isEmpty =>
         throw new TaskException("DC app deployment requires a <compatibility> section in your atlassian-plugin-marketing.xml")
       case Some(pm) => pm.validate()
       case _ => // all good
@@ -70,15 +73,20 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       plugin = plugin,
       userName = getJiraTriggerUser(context),
       baseVersion = baseVersion,
-      serverBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooBuildNrVariableKey),
-      dataCenterBuildNumber = determineBuildNumber(context, deduceBuildNr, pluginInfo, BambooDataCenterBuildNrVariableKey),
-      minServerBuildNumber = deduceBuildNumber(compatibility, isMin = true),
-      maxServerBuildNumber = deduceBuildNumber(compatibility, isMin = false),
-      minDataCenterBuildNumber = deduceBuildNumber(compatibility, isMin = true),
-      maxDataCenterBuildNumber = deduceBuildNumber(compatibility, isMin = false),
+      serverBuildNumber = determineBuildNumber(
+        context, deduceBuildNr, isForDc = false, pluginInfo, BambooBuildNrVariableKey
+      ),
+      dataCenterBuildNumber = determineBuildNumber(
+        context, deduceBuildNr, isForDc = true, pluginInfo, BambooDataCenterBuildNrVariableKey
+      ),
+      minServerBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = true),
+      maxServerBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = false),
+      minDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = true),
+      maxDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = false),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
+      createDcVersionToo = createDcDeploymentToo,
       binary = artifact,
       isPublicVersion = isPublicVersion,
       releaseSummary = releaseSummaryAndDescription.summary,
@@ -86,7 +94,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     )
   }
 
-  private def deduceBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) = {
+  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) = {
     compatibility match {
       case Some(c) if c.getProduct == ProductEnum.BITBUCKET || c.getProduct == ProductEnum.BAMBOO =>
         Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
@@ -154,15 +162,17 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def determineBuildNumber(commonContext: CommonContext,
                                    deduceBuildNr: Boolean,
+                                   isForDc: Boolean,
                                    pluginInfo: PluginArtifactDetails,
                                    bambooBuildNrVariableKey: String) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     Option(vars.get(bambooBuildNrVariableKey)) match {
-      case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.nonEmpty =>
+      case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.trim.nonEmpty =>
         // Bamboo variable has always precedence
         buildNr.getValue.toInt
       case _ if deduceBuildNr => // otherwise we deduce the build number if the setting is active
-        Utils.toBuildNumber(pluginInfo.getVersion)
+        if (isForDc) Utils.toBuildNumber(pluginInfo.getVersion) + 1
+        else Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
         throw new TaskException(
           s"""A build number has to be specified with the Bamboo variable '$bambooBuildNrVariableKey'

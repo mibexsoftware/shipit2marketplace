@@ -38,6 +38,7 @@ object ShipItTaskConfigurator {
   final val ArtifactToDeployKeyField = "artifactToDeployKey"
   final val AllArtifactsToDeployList = "allArtifactsToDeploy"
   final val RunOnBranchBuildsField = "runOnBranchBuilds"
+  final val CreateDcDeploymentField = "createDcDeployment"
   final val IsJiraReleasePanelModeField = "jiraReleasePanelDeploymentOnly"
   final val JiraProjectKeyField = "jiraProjectKey"
   final val JiraProjectList = "jiraProjects"
@@ -81,6 +82,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     context.put(IsPublicVersionField, JBoolean.TRUE)
     context.put(DeduceBuildNrField, JBoolean.TRUE)
     context.put(RunOnBranchBuildsField, JBoolean.FALSE)
+    context.put(CreateDcDeploymentField, JBoolean.FALSE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(JiraProjectKeyField, "")
     context.put(JqlField, DefaultJql)
@@ -106,6 +108,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     config.put(JqlField, actionParams.getString(JqlField))
     config.put(IsPublicVersionField, actionParams.getBoolean(IsPublicVersionField).toString)
     config.put(RunOnBranchBuildsField, actionParams.getBoolean(RunOnBranchBuildsField).toString)
+    config.put(CreateDcDeploymentField, actionParams.getBoolean(CreateDcDeploymentField).toString)
     config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
     config.put(ArtifactToDeployKeyField, actionParams.getString(ArtifactToDeployKeyField))
     config.put(JiraProjectKeyField, actionParams.getString(JiraProjectKeyField))
@@ -122,6 +125,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     context.put(JqlField, taskDefinition.getConfiguration.get(JqlField))
     context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
     context.put(RunOnBranchBuildsField, taskDefinition.getConfiguration.get(RunOnBranchBuildsField))
+    context.put(CreateDcDeploymentField, taskDefinition.getConfiguration.get(CreateDcDeploymentField))
     context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
     context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsJiraReleasePanelModeField))
     context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))

@@ -8,6 +8,7 @@
         toggle='true' list=jiraProjects required='true'/]
     [/@ui.bambooSection]
     [@ww.checkbox labelKey="shipit.task.runOnBranchBuilds" name="runOnBranchBuilds" /]
+    [@ww.checkbox labelKey="shipit.task.createDcDeployment" name="createDcDeployment" /]
     [@ww.checkbox labelKey="shipit.task.publicVersion" name="publicVersion" /]
     [@ww.checkbox labelKey="shipit.task.deduceBuildNrFromPluginVersion" name="deduceBuildNrFromPluginVersion" /]
     [@ww.textfield labelKey="shipit.task.user" name="bambooUserId" template="userPicker" multiSelect=false
