@@ -12,7 +12,10 @@ import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
+import com.atlassian.plugin.marketing.bean.ProductEnum
+
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
@@ -36,17 +39,17 @@ case class NewPluginVersionDetails(plugin: Addon,
   override def toString: String =
     s"""plugin=${plugin.getKey},
         |baseVersion=${baseVersion.getName},
-        |minServerBuildNumber=$minServerBuildNumber,
-        |maxServerBuildNumber=$maxServerBuildNumber,
-        |minDataCenterBuildNumber=$minDataCenterBuildNumber,
-        |maxDataCenterBuildNumber=$maxDataCenterBuildNumber,
-        |baseProduct=$baseProduct,
+        |minServerBuildNumber=${minServerBuildNumber.getOrElse("?")},
+        |maxServerBuildNumber=${maxServerBuildNumber.getOrElse("?")},
+        |minDataCenterBuildNumber=${minDataCenterBuildNumber.getOrElse("?")},
+        |maxDataCenterBuildNumber=${maxDataCenterBuildNumber.getOrElse("?")},
+        |baseProduct=${baseProduct.getOrElse("?")},
         |versionNumber=$versionNumber,
         |isDcBuildNrConfigured=$isDcBuildNrConfigured,
         |createDcVersionToo=$createDcVersionToo,
         |serverBuildNumber=$serverBuildNumber,
         |dataCenterBuildNumber=$dataCenterBuildNumber,
-        |userName=${userName.getOrElse("")},
+        |userName=${userName.getOrElse("?")},
         |isPublicVersion=$isPublicVersion,
         |releaseSummary=$releaseSummary,
         |releaseNotes=$releaseNotes)
@@ -109,6 +112,29 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         Left(MpacAuthenticationError())
       case e: MpacException.ConnectionFailure =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
+        Left(MpacConnectionError())
+    }
+  }
+
+  private def getErrorDetails(ex: MpacException.ServerError) =
+    ex.getErrorDetails.asScala.map(_.getMessage).mkString("\n")
+
+  def getBuildNumber(product: ProductEnum, versionName: String): Either[MpacError, Option[Int]] = {
+    try {
+      val versionSpec =
+        Try(versionName.toInt) match {
+          case Success(buildNr) => ApplicationVersionSpecifier.buildNumber(buildNr)
+          case Failure(_) => ApplicationVersionSpecifier.versionName(versionName)
+        }
+      val versions = client.applications().getVersion(ApplicationKey.valueOf(product.name()), versionSpec)
+      Right(versions.map(_.getBuildNumber))
+    } catch {
+      case e: MpacException.ServerError =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to find app version for ${product.name()} / $versionName}", e)
+        if (e.getStatus == 401 || e.getStatus == 403) Left(MpacAuthenticationError())
+        else Left(MpacConnectionError(getErrorDetails(e)))
+      case e: MpacException.ConnectionFailure =>
+        log.error(s"SHIPIT2MARKETPLACE: failed to find app version for ${product.name()} / $versionName}", e)
         Left(MpacConnectionError())
     }
   }

@@ -4,16 +4,16 @@ import java.io.File
 import java.util.concurrent.Callable
 
 import ch.mibex.bamboo.shipit.jira.JiraFacade
-import ch.mibex.bamboo.shipit.mpac.NewPluginVersionDetails
+import ch.mibex.bamboo.shipit.mpac.{MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
 import com.atlassian.applinks.api.CredentialsRequiredException
 import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
-import com.atlassian.bamboo.task.{CommonTaskContext, TaskContext, TaskDefinition, TaskException}
+import com.atlassian.bamboo.task.{CommonTaskContext, TaskDefinition, TaskException}
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
 import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
-import com.atlassian.plugin.marketing.bean.{PluginMarketing, ProductCompatibility, ProductEnum}
+import com.atlassian.plugin.marketing.bean.{PluginMarketing, ProductCompatibility}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.plugin.tool.PluginArtifactDetails
 import com.atlassian.sal.api.message.I18nResolver
@@ -27,6 +27,7 @@ import scala.collection.JavaConverters._
 class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksService: JiraApplinksService,
                                                  @ComponentImport impersonationService: ImpersonationService,
                                                  @ComponentImport bambooUserManager: BambooUserManager,
+                                                 @ComponentImport mpacFacade: MpacFacade,
                                                  @ComponentImport i18nResolver: I18nResolver) extends Logging {
 
   case class SummaryAndReleaseNotes(summary: String, releaseNotes: String)
@@ -52,7 +53,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
       throw new TaskException("Deduce build number setting not found")
     ).toBoolean
-    val vars = context.getVariableContext.getEffectiveVariables
+    val vars = taskContext.getCommonContext.getVariableContext.getEffectiveVariables
     val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
@@ -94,23 +95,15 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     )
   }
 
-  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) = {
-    compatibility match {
-      case Some(c) if c.getProduct == ProductEnum.BITBUCKET || c.getProduct == ProductEnum.BAMBOO =>
-        Option(Utils.toBuildNumber(if (isMin) c.getMin else c.getMax, shortVersion = true))
-      case Some(c) if c.getMin.nonEmpty && c.getMax.nonEmpty =>
-        // other product's like Confluence has build numbers that cannot be deduced from the version number
-        try {
-          if (isMin) Option(c.getMin.toInt) else Option(c.getMax.toInt)
-        } catch {
-          case e: NumberFormatException if c.getProduct == ProductEnum.CONFLUENCE =>
-            throw new TaskException("Compatibility range version numbers cannot be deduced for Confluence. " +
-              "Please use the Confluence build numbers from the Marketplace instead, e.g., 10233 for 6.14.1.", e)
-          case e: Exception => throw e
-        }
-      case _ => None
-    }
-  }
+  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) =
+    compatibility.map(c => {
+      val version = if (isMin) c.getMin else c.getMax
+      mpacFacade.getBuildNumber(c.getProduct, version) match {
+        case Left(e) => throw new TaskException(e.toString(i18nResolver))
+        case Right(Some(buildNumber)) => buildNumber
+        case _ => throw new TaskException(s"No build number found for ${c.getProduct.name()} and version $version")
+      }
+    })
 
   private def collectReleaseNotes(projectInfos: JiraProjectData,
                                   commonContext: CommonContext,

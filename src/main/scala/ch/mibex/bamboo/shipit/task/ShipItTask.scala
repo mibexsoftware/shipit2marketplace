@@ -2,6 +2,7 @@ package ch.mibex.bamboo.shipit.task
 
 import java.io.{File, FileInputStream}
 
+import ch.mibex.bamboo.shipit.Constants.BambooVariables.BambooDataCenterBuildNrVariableKey
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
@@ -100,7 +101,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               buildLogger.addErrorLogEntry(msg)
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
-              val pluginMarketing = getPluginMarketingInfo(artifact)
+              val pluginMarketing = getPluginMarketingInfo(artifact, taskContext)
               val newPluginVersion = newPluginDataCollector.collectData(
                 taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin, pluginMarketing
               )
@@ -115,14 +116,18 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       }
     }
 
-  private def getPluginMarketingInfo(artifact: File) = {
+  private def getPluginMarketingInfo(artifact: File, taskContext: CommonTaskContext) = {
     val is = new FileInputStream(artifact)
     try {
       Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
     } catch {
+      case e: Exception if isDcDeployment(taskContext) =>
+        // DC deployment requires atlassian-plugin-marketing.xml
+        throw e
       case e: Exception =>
+        // we don't necessarily need the marketing plug-in details if non-dc deployment
         debug("SHIPIT2MARKETPLACE: failed to get marketing plug-in details from JAR", e)
-        None // we don't necessarily need the marketing plug-in details if non-dc deployment
+        None
     } finally {
       is.close()
     }
@@ -157,6 +162,15 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
 
   private def isBranchBuildEnabled(taskContext: CommonTaskContext) =
     Option(taskContext.getConfigurationMap.getAsBoolean(RunOnBranchBuildsField)).getOrElse(false)
+
+  private def isDcDeployment(taskContext: CommonTaskContext) = {
+    val vars = taskContext.getCommonContext.getVariableContext.getEffectiveVariables
+    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
+      case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
+      case None => false
+    }
+    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false) || isDcBuildNrConfigured
+  }
 
   // this is an additional safety check that this build has been triggered from JIRA because
   // the trigger reason JIRA is not always propagated to the deployment project
