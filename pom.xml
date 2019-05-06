@@ -112,6 +112,21 @@
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
                 <version>3.2.0</version>
+                <configuration>
+                    <args>
+                        <arg>-target:jvm-1.8</arg>
+                        <arg>-encoding</arg>
+                        <arg>utf8</arg>
+                        <arg>-unchecked</arg>
+                        <arg>-deprecation</arg>
+                        <arg>-Ywarn-numeric-widen</arg>
+                        <arg>-Ywarn-value-discard</arg>
+                        <arg>-Ywarn-dead-code</arg>
+                        <arg>-Ywarn-unused</arg>
+                        <arg>-feature</arg>
+                        <arg>-explaintypes</arg>
+                    </args>
+                </configuration>
                 <!--
                     http://stackoverflow.com/questions/336144/building-a-scala-app-with-maven-that-has-java-source-mixed-in
                 -->
