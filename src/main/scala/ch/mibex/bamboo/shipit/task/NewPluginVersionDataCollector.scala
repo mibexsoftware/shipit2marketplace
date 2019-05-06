@@ -99,7 +99,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     compatibility.map(c => {
       val version = if (isMin) c.getMin else c.getMax
       mpacFacade.getBuildNumber(c.getProduct, version) match {
-        case Left(e) => throw new TaskException(e.toString(i18nResolver))
+        case Left(e) => throw new TaskException(i18nResolver.getText(e.i18n))
         case Right(Some(buildNumber)) => buildNumber
         case _ => throw new TaskException(s"No build number found for ${c.getProduct.name()} and version $version")
       }

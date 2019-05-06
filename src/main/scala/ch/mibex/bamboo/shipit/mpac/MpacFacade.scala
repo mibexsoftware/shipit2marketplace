@@ -116,9 +116,6 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     }
   }
 
-  private def getErrorDetails(ex: MpacException.ServerError) =
-    ex.getErrorDetails.asScala.map(_.getMessage).mkString("\n")
-
   def getBuildNumber(product: ProductEnum, versionName: String): Either[MpacError, Option[Int]] = {
     try {
       val versionSpec =
@@ -126,13 +123,13 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
           case Success(buildNr) => ApplicationVersionSpecifier.buildNumber(buildNr)
           case Failure(_) => ApplicationVersionSpecifier.versionName(versionName)
         }
-      val versions = client.applications().getVersion(ApplicationKey.valueOf(product.name()), versionSpec)
-      Right(versions.map(_.getBuildNumber))
+      val applKey = ApplicationKey.valueOf(product.name())
+      val version = client.applications().getVersion(applKey, versionSpec).asScala.headOption
+      Right(version.map(_.getBuildNumber))
     } catch {
-      case e: MpacException.ServerError =>
+      case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find app version for ${product.name()} / $versionName}", e)
-        if (e.getStatus == 401 || e.getStatus == 403) Left(MpacAuthenticationError())
-        else Left(MpacConnectionError(getErrorDetails(e)))
+        Left(MpacAuthenticationError())
       case e: MpacException.ConnectionFailure =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find app version for ${product.name()} / $versionName}", e)
         Left(MpacConnectionError())
