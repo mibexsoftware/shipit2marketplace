@@ -116,13 +116,16 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     }
   }
 
-  def getBuildNumber(product: ProductEnum, versionName: String): Either[MpacError, Option[Int]] = {
+  def getBuildNumber(product: ProductEnum, versionName: Option[String]): Either[MpacError, Option[Int]] = {
     try {
-      val versionSpec =
-        Try(versionName.toInt) match {
-          case Success(buildNr) => ApplicationVersionSpecifier.buildNumber(buildNr)
-          case Failure(_) => ApplicationVersionSpecifier.versionName(versionName)
-        }
+      val versionSpec = versionName match {
+        case Some(version) if version.trim.nonEmpty =>
+          Try(version.toInt) match {
+            case Success(buildNr) => ApplicationVersionSpecifier.buildNumber(buildNr)
+            case Failure(_) => ApplicationVersionSpecifier.versionName(version)
+          }
+        case _ => ApplicationVersionSpecifier.latest()
+      }
       val applKey = ApplicationKey.valueOf(product.name())
       val version = client.applications().getVersion(applKey, versionSpec).asScala.headOption
       Right(version.map(_.getBuildNumber))
@@ -204,7 +207,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
           throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
       }
     } else {
-      // if specified in the atlassian-plugin-marketing.xml, also take the server host compatiblity
+      // if specified in the atlassian-plugin-marketing.xml, also take the server host compatibility
       (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber, newVersionDetails.maxServerBuildNumber) match {
         case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber)) =>
           addonVersion = addonVersion.compatibilities(

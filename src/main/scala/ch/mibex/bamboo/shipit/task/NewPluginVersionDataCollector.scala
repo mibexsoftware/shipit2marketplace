@@ -12,6 +12,7 @@ import com.atlassian.bamboo.task.{CommonTaskContext, TaskDefinition, TaskExcepti
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
+import com.atlassian.fugue
 import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
 import com.atlassian.plugin.marketing.bean.{PluginMarketing, ProductCompatibility}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
@@ -27,7 +28,6 @@ import scala.collection.JavaConverters._
 class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksService: JiraApplinksService,
                                                  @ComponentImport impersonationService: ImpersonationService,
                                                  @ComponentImport bambooUserManager: BambooUserManager,
-                                                 @ComponentImport mpacFacade: MpacFacade,
                                                  @ComponentImport i18nResolver: I18nResolver) extends Logging {
 
   case class SummaryAndReleaseNotes(summary: String, releaseNotes: String)
@@ -44,7 +44,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
                   baseVersion: AddonVersion,
                   pluginInfo: PluginArtifactDetails,
                   plugin: Addon,
-                  pluginMarketing: Option[PluginMarketing]): NewPluginVersionDetails = {
+                  pluginMarketing: Option[PluginMarketing])(implicit mpacFacade: MpacFacade): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
     val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
@@ -60,19 +60,10 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     }
     val createDcDeploymentToo =
       Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false)
-
-    pluginMarketing match {
-      case None if isDcBuildNrConfigured || createDcDeploymentToo =>
-        throw new TaskException("DC app deployment requires an atlassian-plugin-marketing.xml in our JAR")
-      case Some(pm) if (isDcBuildNrConfigured || createDcDeploymentToo) && pm.getCompatibility.isEmpty =>
-        throw new TaskException("DC app deployment requires a <compatibility> section in your atlassian-plugin-marketing.xml")
-      case Some(pm) => pm.validate()
-      case _ => // all good
-    }
     val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
+
     NewPluginVersionDetails(
       plugin = plugin,
-      userName = getJiraTriggerUser(context),
       baseVersion = baseVersion,
       serverBuildNumber = determineBuildNumber(
         context, deduceBuildNr, isForDc = false, pluginInfo, BambooBuildNrVariableKey
@@ -80,10 +71,11 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       dataCenterBuildNumber = determineBuildNumber(
         context, deduceBuildNr, isForDc = true, pluginInfo, BambooDataCenterBuildNrVariableKey
       ),
-      minServerBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = true),
-      maxServerBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = false),
-      minDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = true),
-      maxDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, isMin = false),
+      minServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = true, isDc = false),
+      maxServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = false, isDc = false),
+      minDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = true, isDc = true),
+      maxDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = false, isDc = true),
+      userName = getJiraTriggerUser(context),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
@@ -95,15 +87,39 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     )
   }
 
-  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility], isMin: Boolean) =
-    compatibility.map(c => {
-      val version = if (isMin) c.getMin else c.getMax
-      mpacFacade.getBuildNumber(c.getProduct, version) match {
-        case Left(e) => throw new TaskException(i18nResolver.getText(e.i18n))
-        case Right(Some(buildNumber)) => buildNumber
-        case _ => throw new TaskException(s"No build number found for ${c.getProduct.name()} and version $version")
-      }
-    })
+  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
+    if (upmOpt.isDefined) Some(upmOpt.get)
+    else None
+
+  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility],
+                                           baseVersion: AddonVersion,
+                                           isMin: Boolean,
+                                           isDc: Boolean)(implicit mpacFacade: MpacFacade): Option[Int] = {
+    compatibility match {
+      case Some(c) => // if we have <compatibility> section in atlassian-plugin-marketing.xml, take it from there
+        val version = if (isMin) c.getMin else c.getMax
+        mpacFacade.getBuildNumber(c.getProduct, Option(version)) match {
+          case Left(e) => throw new TaskException(i18nResolver.getText(e.i18n))
+          case Right(Some(buildNumber)) => Option(buildNumber)
+          case _ => throw new TaskException(s"No build number found for ${c.getProduct.name()} and version $version")
+        }
+      case None => // otherwise, let's take compatibility from the last app version
+        val lastCompat = for {
+          lastCompat <- baseVersion.getCompatibilities.asScala.headOption
+        } yield lastCompat
+        lastCompat match {
+          case Some(lc) =>
+            val compatVersion = if (isDc) {
+              if (isMin) lc.getDataCenterMinBuild else lc.getDataCenterMaxBuild
+            } else {
+              if (isMin) lc.getServerMinBuild else lc.getServerMaxBuild
+            }
+            compatVersion.map(_.toInt)
+          case None =>
+            throw new TaskException("No atlassian-plugin-marketing.xml and also no last public app version with compatibility information found")
+        }
+    }
+  }
 
   private def collectReleaseNotes(projectInfos: JiraProjectData,
                                   commonContext: CommonContext,

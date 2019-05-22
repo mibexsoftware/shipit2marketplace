@@ -104,7 +104,7 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
               val pluginMarketing = getPluginMarketingInfo(artifact, taskContext)
               val newPluginVersion = newPluginDataCollector.collectData(
                 taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin, pluginMarketing
-              )
+              )(mpac)
               uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>
               buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
