@@ -1,6 +1,6 @@
 <atlassian-plugin-marketing>
     <compatibility>
-        <product name="bamboo" min="6.0.0" max="6.8.0"/>
+        <product name="bamboo" min="6.0.0"/>
     </compatibility>
     <logo image="images/pluginLogo.jpg"/> <!-- 144 x 144px PNG/JPG transparent. Marketplace automatically creates an add-on icon from your logo. -->
     <highlights/>
