@@ -109,7 +109,7 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         } yield lastCompat
         lastCompat match {
           case Some(lc) =>
-            val compatVersion = if (isDc) {
+            val compatVersion: Option[Integer] = if (isDc) {
               if (isMin) lc.getDataCenterMinBuild else lc.getDataCenterMaxBuild
             } else {
               if (isMin) lc.getServerMinBuild else lc.getServerMaxBuild
