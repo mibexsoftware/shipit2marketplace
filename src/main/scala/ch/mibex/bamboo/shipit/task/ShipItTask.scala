@@ -6,7 +6,12 @@ import ch.mibex.bamboo.shipit.Constants.BambooVariables.BambooDataCenterBuildNrV
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
-import ch.mibex.bamboo.shipit.task.artifacts.{ArtifactDownloaderTaskId, ArtifactSubscriptionId, DownloaderArtifactCollector, SubscribedArtifactCollector}
+import ch.mibex.bamboo.shipit.task.artifacts.{
+  ArtifactDownloaderTaskId,
+  ArtifactSubscriptionId,
+  DownloaderArtifactCollector,
+  SubscribedArtifactCollector
+}
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.bamboo.build.logger.BuildLogger
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
@@ -23,17 +28,18 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
-
-
 @Component
-class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionService,
-                              @ComponentImport deploymentProjectService: DeploymentProjectService,
-                              @ComponentImport i18nResolver: I18nResolver,
-                              mpacCredentialsDao: AdminSettingsDao,
-                              buildArtifactCollector: DownloaderArtifactCollector,
-                              newPluginDataCollector: NewPluginVersionDataCollector,
-                              subscribedArtifactCollector: SubscribedArtifactCollector)
-  extends TaskType with DeploymentTaskType with Logging {
+class ShipItTask @Autowired()(
+    @ComponentImport encryptionService: EncryptionService,
+    @ComponentImport deploymentProjectService: DeploymentProjectService,
+    @ComponentImport i18nResolver: I18nResolver,
+    mpacCredentialsDao: AdminSettingsDao,
+    buildArtifactCollector: DownloaderArtifactCollector,
+    newPluginDataCollector: NewPluginVersionDataCollector,
+    subscribedArtifactCollector: SubscribedArtifactCollector)
+    extends TaskType
+    with DeploymentTaskType
+    with Logging {
 
   import Constants._
   import ShipItTaskConfigurator._
@@ -54,10 +60,11 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       isBranchBuild = false // for deployment projects we can use conditional triggers for this
     )
 
-  private def runTask(taskContext: CommonTaskContext,
-                      commonContext: CommonContext,
-                      isAllowedTriggerReason: TriggerReason => Boolean,
-                      isBranchBuild: Boolean) = {
+  private def runTask(
+      taskContext: CommonTaskContext,
+      commonContext: CommonContext,
+      isAllowedTriggerReason: TriggerReason => Boolean,
+      isBranchBuild: Boolean) = {
     val buildLogger = taskContext.getBuildLogger
     val taskBuilder = TaskResultBuilder.newBuilder(taskContext)
 
@@ -83,9 +90,10 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  private def createNewPluginVersion(taskContext: CommonTaskContext,
-                                     commonContext: CommonContext,
-                                     taskBuilder: TaskResultBuilder): TaskResult =
+  private def createNewPluginVersion(
+      taskContext: CommonTaskContext,
+      commonContext: CommonContext,
+      taskBuilder: TaskResultBuilder): TaskResult =
     MpacFacade.withMpac(getMpacCredentials) { mpac =>
       val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
@@ -97,13 +105,22 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
         case Right(Some(plugin)) =>
           findBaseVersionForNewSubmission(plugin.getKey, commonContext, mpac) match {
             case Left(error) =>
-              val msg = i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey, i18nResolver.getText(error.i18n))
+              val msg = i18nResolver.getText(
+                "shipit.task.plugin.notfound.error",
+                pluginInfo.getKey,
+                i18nResolver.getText(error.i18n))
               buildLogger.addErrorLogEntry(msg)
               taskBuilder.failed().build
             case Right(Some(baseVersion)) =>
               val pluginMarketing = getPluginMarketingInfo(artifact, taskContext)
               val newPluginVersion = newPluginDataCollector.collectData(
-                taskContext, commonContext, artifact, baseVersion, pluginInfo, plugin, pluginMarketing
+                taskContext,
+                commonContext,
+                artifact,
+                baseVersion,
+                pluginInfo,
+                plugin,
+                pluginMarketing
               )(mpac)
               uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
             case _ =>
@@ -133,16 +150,19 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
     }
   }
 
-  private def uploadNewPluginVersion(taskContext: CommonTaskContext,
-                                     taskBuilder: TaskResultBuilder,
-                                     buildLogger: BuildLogger,
-                                     mpac: MpacFacade,
-                                     newPluginVersion: NewPluginVersionDetails): TaskResult = {
+  private def uploadNewPluginVersion(
+      taskContext: CommonTaskContext,
+      taskBuilder: TaskResultBuilder,
+      buildLogger: BuildLogger,
+      mpac: MpacFacade,
+      newPluginVersion: NewPluginVersionDetails): TaskResult = {
     debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
-        val successMsg = i18nResolver.getText("shipit.task.successfully.shipped",
-          newVersion.getName.getOrElse("?"), newPluginVersion.plugin.getName)
+        val successMsg = i18nResolver.getText(
+          "shipit.task.successfully.shipped",
+          newVersion.getName.getOrElse("?"),
+          newPluginVersion.plugin.getName)
         buildLogger.addBuildLogEntry(successMsg)
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build
@@ -169,7 +189,8 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
-    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false) || isDcBuildNrConfigured
+    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField))
+      .getOrElse(false) || isDcBuildNrConfigured
   }
 
   // this is an additional safety check that this build has been triggered from JIRA because
@@ -198,20 +219,21 @@ class ShipItTask @Autowired()(@ComponentImport encryptionService: EncryptionServ
         vendorUserName = credentials.getVendorUserName,
         vendorPassword = encryptionService.decrypt(credentials.getVendorPassword)
       )
-    case None => throw new TaskException("Marketplace credentials not found")
+    case None => throw new TaskException(i18nResolver.getText("shipit.task.marketplace.credentials.notfound"))
   }
 
   private def findArtifact(taskContext: CommonTaskContext) = {
     val artifactToDeployId = Option(taskContext.getConfigurationMap.get(ArtifactToDeployKeyField)).getOrElse(
-      throw new TaskException("Artifact to deploy setting not configured")
+      throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.setting.notconfigured"))
     )
     (artifactToDeployId match {
       case ArtifactSubscriptionId(artifactId, artifactName) =>
         subscribedArtifactCollector.findArtifactInSubscriptions(taskContext, artifactId)
       case ArtifactDownloaderTaskId(artifactId, artifactName, downloaderTaskId, transferId) =>
         buildArtifactCollector.findArtifactInDownloaderTask(taskContext, artifactId, downloaderTaskId, transferId)
-      case _ => throw new TaskException(s"Artifact deploy ID format '$artifactToDeployId' unknown")
-    }).getOrElse(throw new TaskException("Artifact to deploy setting not found"))
+      case _ =>
+        throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.invalidformat", artifactToDeployId))
+    }).getOrElse(throw new TaskException("shipit.task.artifact.deploy.setting.notfound"))
   }
 
   private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext, mpac: MpacFacade) = {

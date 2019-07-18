@@ -19,23 +19,24 @@ import scala.util.{Failure, Success, Try}
 
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
-case class NewPluginVersionDetails(plugin: Addon,
-                                   baseVersion: AddonVersion,
-                                   serverBuildNumber: Int,
-                                   dataCenterBuildNumber: Long,
-                                   minServerBuildNumber: Option[Int],
-                                   maxServerBuildNumber: Option[Int],
-                                   minDataCenterBuildNumber: Option[Int],
-                                   maxDataCenterBuildNumber: Option[Int],
-                                   versionNumber: String,
-                                   baseProduct: Option[String],
-                                   isDcBuildNrConfigured: Boolean,
-                                   createDcVersionToo: Boolean,
-                                   userName: Option[String],
-                                   binary: File,
-                                   isPublicVersion: Boolean,
-                                   releaseSummary: String,
-                                   releaseNotes: String) {
+case class NewPluginVersionDetails(
+    plugin: Addon,
+    baseVersion: AddonVersion,
+    serverBuildNumber: Int,
+    dataCenterBuildNumber: Long,
+    minServerBuildNumber: Option[Int],
+    maxServerBuildNumber: Option[Int],
+    minDataCenterBuildNumber: Option[Int],
+    maxDataCenterBuildNumber: Option[Int],
+    versionNumber: String,
+    baseProduct: Option[String],
+    isDcBuildNrConfigured: Boolean,
+    createDcVersionToo: Boolean,
+    userName: Option[String],
+    binary: File,
+    isPublicVersion: Boolean,
+    releaseSummary: String,
+    releaseNotes: String) {
   override def toString: String =
     s"""plugin=${plugin.getKey},
         |baseVersion=${baseVersion.getName},
@@ -94,7 +95,6 @@ object MpacFacade {
   }
 
 }
-
 
 class MpacFacade(client: MarketplaceClient) extends Logging {
 
@@ -187,19 +187,29 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
 
     // for DC, configure both DC and server host compatibility
     if (newVersionDetails.createDcVersionToo || newVersionDetails.isDcBuildNrConfigured) {
-      (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber,
-        newVersionDetails.maxServerBuildNumber, newVersionDetails.minDataCenterBuildNumber,
+      (
+        newVersionDetails.baseProduct,
+        newVersionDetails.minServerBuildNumber,
+        newVersionDetails.maxServerBuildNumber,
+        newVersionDetails.minDataCenterBuildNumber,
         newVersionDetails.maxDataCenterBuildNumber) match {
-        case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber),
-              Some(minDataCenterBuildNumber), Some(maxDataCenterBuildNumber)) =>
-          addonVersion = addonVersion.compatibilities(List(
-            ModelBuilders.versionCompatibilityForServerAndDataCenter(
-              ApplicationKey.valueOf(baseProduct),
-              minServerBuildNumber, // Server version min compatibility
-              maxServerBuildNumber, // Server version max compatibility
-              minDataCenterBuildNumber, // DC version min compatibility
-              maxDataCenterBuildNumber) // DC version max compatibility
-          ).asJava)
+        case (
+            Some(baseProduct),
+            Some(minServerBuildNumber),
+            Some(maxServerBuildNumber),
+            Some(minDataCenterBuildNumber),
+            Some(maxDataCenterBuildNumber)) =>
+          addonVersion = addonVersion
+            .compatibilities(
+              List(
+                ModelBuilders.versionCompatibilityForServerAndDataCenter(
+                  ApplicationKey.valueOf(baseProduct),
+                  minServerBuildNumber, // Server version min compatibility
+                  maxServerBuildNumber, // Server version max compatibility
+                  minDataCenterBuildNumber, // DC version min compatibility
+                  maxDataCenterBuildNumber
+                ) // DC version max compatibility
+              ).asJava)
             .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
         case _ =>
           // without the product version compatibility for both server and DC, we get the following error:
@@ -211,11 +221,12 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber, newVersionDetails.maxServerBuildNumber) match {
         case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber)) =>
           addonVersion = addonVersion.compatibilities(
-            List(ModelBuilders.versionCompatibilityForServer(
-              ApplicationKey.valueOf(baseProduct),
-              minServerBuildNumber, // Server version min compatibility
-              maxServerBuildNumber // Server version max compatibility
-            )).asJava
+            List(
+              ModelBuilders.versionCompatibilityForServer(
+                ApplicationKey.valueOf(baseProduct),
+                minServerBuildNumber, // Server version min compatibility
+                maxServerBuildNumber // Server version max compatibility
+              )).asJava
           )
         case _ =>
       }
@@ -249,4 +260,3 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     else None
 
 }
-

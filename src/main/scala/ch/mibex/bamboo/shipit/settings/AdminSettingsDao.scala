@@ -10,8 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 @Component
-class AdminSettingsDao @Autowired()(@ComponentImport ao: ActiveObjects,
-                                    @ComponentImport encryptionService: EncryptionService) extends Logging {
+class AdminSettingsDao @Autowired()(
+    @ComponentImport ao: ActiveObjects,
+    @ComponentImport encryptionService: EncryptionService)
+    extends Logging {
 
   import AoAdminSettings._
 

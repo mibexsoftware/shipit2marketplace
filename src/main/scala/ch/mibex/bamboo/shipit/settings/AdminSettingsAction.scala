@@ -8,8 +8,9 @@ import com.opensymphony.xwork2.Action
 
 import scala.beans.BeanProperty
 
-class AdminSettingsAction (encryptionService: EncryptionService,
-                           mpacCredentialsDao: AdminSettingsDao) extends BambooActionSupport with Logging {
+class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsDao: AdminSettingsDao)
+    extends BambooActionSupport
+    with Logging {
 
   private val MpacVendorNameField = "vendorName"
   private val MpacVendorPasswordField = "vendorPassword"
@@ -58,8 +59,7 @@ class AdminSettingsAction (encryptionService: EncryptionService,
   }
 
   private def checkMpacConnection() {
-    val credentials = MpacCredentials(vendorUserName = vendorName,
-                                      vendorPassword = decryptIfNecessary(vendorPassword))
+    val credentials = MpacCredentials(vendorUserName = vendorName, vendorPassword = decryptIfNecessary(vendorPassword))
     MpacFacade.withMpac(credentials) { mpac =>
       mpac.checkCredentials() foreach { error =>
         addActionError(getText(error.i18n))
@@ -67,10 +67,11 @@ class AdminSettingsAction (encryptionService: EncryptionService,
     }
   }
 
-  private def decryptIfNecessary(pw: String) = try {
-    encryptionService.decrypt(vendorPassword)
-  } catch {
-    case e: EncryptionException => pw // not encrypted
-  }
+  private def decryptIfNecessary(pw: String) =
+    try {
+      encryptionService.decrypt(vendorPassword)
+    } catch {
+      case e: EncryptionException => pw // not encrypted
+    }
 
 }

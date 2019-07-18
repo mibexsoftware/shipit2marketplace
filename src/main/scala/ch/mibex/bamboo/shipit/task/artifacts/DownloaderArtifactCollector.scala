@@ -16,35 +16,35 @@ import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
 
-
 // there are three ways to define artifacts in Bamboo:
 // - inter-plan artifacts by sharing
 // - sharing artifacts between build plans through the artifact downloader task
 // - sharing artifacts from a build plan to a deployment environment
 // see https://confluence.atlassian.com/display/BAMBOO058/Sharing+artifacts
 @Component
-class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefinitionManager: ArtifactDefinitionManager,
-                                               @ComponentImport i18nResolver: I18nResolver,
-                                               @ComponentImport variableContext: CustomVariableContext) {
+class DownloaderArtifactCollector @Autowired()(
+    @ComponentImport artifactDefinitionManager: ArtifactDefinitionManager,
+    @ComponentImport i18nResolver: I18nResolver,
+    @ComponentImport variableContext: CustomVariableContext) {
 
-  def findArtifactInDownloaderTask(taskContext: CommonTaskContext,
-                                   artifactId: Long,
-                                   downloaderTaskId: Long,
-                                   transferId: Int): Option[File] =
-    taskContext.getCommonContext.getTaskDefinitions
-      .asScala
+  def findArtifactInDownloaderTask(
+      taskContext: CommonTaskContext,
+      artifactId: Long,
+      downloaderTaskId: Long,
+      transferId: Int): Option[File] =
+    taskContext.getCommonContext.getTaskDefinitions.asScala
       .find(t => t.getId == downloaderTaskId)
       .flatMap(downloaderTask => {
         val downloaderContext = getDownloaderContext(taskContext, downloaderTask)
         getRuntimeArtifactIds(transferId, downloaderContext) find { rai =>
           ArtifactDownloaderTaskConfigurationHelper.getArtifactId(downloaderContext, rai) == artifactId
-        } flatMap { ai =>
-          val copyPattern = ArtifactDownloaderTaskConfigurationHelper.getCopyPattern(downloaderContext, ai)
-          val subst = variableContext.substituteString(copyPattern,
-                                                       taskContext.getCommonContext,
-                                                       taskContext.getBuildLogger)
-          val localPath = ArtifactDownloaderTaskConfigurationHelper.getLocalPath(downloaderContext, ai)
-          Utils.findMostRecentMatchingFile(subst, new File(taskContext.getWorkingDirectory, localPath))
+        } flatMap {
+          ai =>
+            val copyPattern = ArtifactDownloaderTaskConfigurationHelper.getCopyPattern(downloaderContext, ai)
+            val subst =
+              variableContext.substituteString(copyPattern, taskContext.getCommonContext, taskContext.getBuildLogger)
+            val localPath = ArtifactDownloaderTaskConfigurationHelper.getLocalPath(downloaderContext, ai)
+            Utils.findMostRecentMatchingFile(subst, new File(taskContext.getWorkingDirectory, localPath))
         }
       })
 
@@ -52,8 +52,7 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
     ArtifactDownloaderTaskConfigurationHelper.getRuntimeArtifactIds(artifactDownloaderContext, transferId).asScala
 
   private def getDownloaderContext(taskContext: CommonTaskContext, downloaderTask: TaskDefinition) =
-    taskContext.getCommonContext.getRuntimeTaskDefinitions
-      .asScala
+    taskContext.getCommonContext.getRuntimeTaskDefinitions.asScala
       .find(_.getPluginKey == downloaderTask.getPluginKey)
       .getOrElse(throw new IllegalStateException("Downloader task not found"))
       .getRuntimeContext
@@ -66,7 +65,9 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
       val sourcePlanKey = ArtifactDownloaderTaskConfigurationHelper.getSourcePlanKey(t.getConfiguration)
       val groupName = i18nResolver.getText("shipit.task.config.individual.artifacts")
 
-      ArtifactDownloaderTaskConfigurationHelper.getArtifactKeys(t.getConfiguration).asScala
+      ArtifactDownloaderTaskConfigurationHelper
+        .getArtifactKeys(t.getConfiguration)
+        .asScala
         .map(artifactKey => ArtifactInfo(id = t.getConfiguration.get(artifactKey).toLong, key = artifactKey))
         .filter(artifactInfo => artifactInfo.id > -1)
         .foreach(artifactInfo => {
@@ -82,7 +83,7 @@ class DownloaderArtifactCollector @Autowired()(@ComponentImport artifactDefiniti
     artifactsToDeploy
   }
 
-  private def filterEnabledDownloaderTasks(taskDefinitions: Seq[TaskDefinition])=
+  private def filterEnabledDownloaderTasks(taskDefinitions: Seq[TaskDefinition]) =
     taskDefinitions.filter(t => t.getPluginKey == BambooPluginKeys.ARTIFACT_DOWNLOAD_TASK_MODULE_KEY && t.isEnabled)
 
 }

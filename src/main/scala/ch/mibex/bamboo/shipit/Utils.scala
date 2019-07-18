@@ -83,7 +83,8 @@ object Utils {
     val minorStr = s"%-${3 - numDigitsInc + numDigitsMinor}s".format(minor).replace(' ', '0')
 
     val major = version.getMajorVersion
-    val majorStr = s"%-${(if (shortVersion) 7 else 9) - (incStr.length + minorStr.length)}s".format(major).replace(' ', '0')
+    val majorStr =
+      s"%-${(if (shortVersion) 7 else 9) - (incStr.length + minorStr.length)}s".format(major).replace(' ', '0')
 
     (majorStr + minorStr + incStr).toInt
   }
@@ -92,7 +93,7 @@ object Utils {
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({
   //   // code to run with security context
   // })
-  implicit def functionToUncheckedOp[T](f : => T): Callable[T] = new Callable[T] {
+  implicit def functionToUncheckedOp[T](f: => T): Callable[T] = new Callable[T] {
     override def call() = f
   }
 

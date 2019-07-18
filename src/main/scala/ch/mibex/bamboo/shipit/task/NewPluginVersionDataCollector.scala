@@ -23,12 +23,13 @@ import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
 
-
 @Component
-class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksService: JiraApplinksService,
-                                                 @ComponentImport impersonationService: ImpersonationService,
-                                                 @ComponentImport bambooUserManager: BambooUserManager,
-                                                 @ComponentImport i18nResolver: I18nResolver) extends Logging {
+class NewPluginVersionDataCollector @Autowired()(
+    @ComponentImport jiraApplinksService: JiraApplinksService,
+    @ComponentImport impersonationService: ImpersonationService,
+    @ComponentImport bambooUserManager: BambooUserManager,
+    @ComponentImport i18nResolver: I18nResolver)
+    extends Logging {
 
   case class SummaryAndReleaseNotes(summary: String, releaseNotes: String)
 
@@ -38,24 +39,30 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   lazy val FullyQualifiedPluginTaskKey = s"${Utils.findPluginKeyInDescriptor()}:$PluginTaskKey"
 
-  def collectData(taskContext: CommonTaskContext,
-                  context: CommonContext,
-                  artifact: File,
-                  baseVersion: AddonVersion,
-                  pluginInfo: PluginArtifactDetails,
-                  plugin: Addon,
-                  pluginMarketing: Option[PluginMarketing])(implicit mpacFacade: MpacFacade): NewPluginVersionDetails = {
+  def collectData(
+      taskContext: CommonTaskContext,
+      context: CommonContext,
+      artifact: File,
+      baseVersion: AddonVersion,
+      pluginInfo: PluginArtifactDetails,
+      plugin: Addon,
+      pluginMarketing: Option[PluginMarketing])(implicit mpacFacade: MpacFacade): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
     val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
-    val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField)).getOrElse(
-      throw new TaskException("Public version setting not found")
-    ).toBoolean
-    val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField)).getOrElse(
-      throw new TaskException("Deduce build number setting not found")
-    ).toBoolean
+    val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField))
+      .getOrElse(
+        throw new TaskException(i18nResolver.getText("shipit.task.publicversion.missing"))
+      )
+      .toBoolean
+    val deduceBuildNr = Option(taskContext.getConfigurationMap.get(DeduceBuildNrField))
+      .getOrElse(
+        throw new TaskException(i18nResolver.getText("shipit.task.deducebuildnumber.missing"))
+      )
+      .toBoolean
     val vars = taskContext.getCommonContext.getVariableContext.getEffectiveVariables
     val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
-      case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
+      case Some(dcBuildNrVariable) =>
+        Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
     val createDcDeploymentToo =
@@ -66,10 +73,18 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
       plugin = plugin,
       baseVersion = baseVersion,
       serverBuildNumber = determineBuildNumber(
-        context, deduceBuildNr, isForDc = false, pluginInfo, BambooBuildNrVariableKey
+        context,
+        deduceBuildNr,
+        isForDc = false,
+        pluginInfo,
+        BambooBuildNrVariableKey
       ),
       dataCenterBuildNumber = determineBuildNumber(
-        context, deduceBuildNr, isForDc = true, pluginInfo, BambooDataCenterBuildNrVariableKey
+        context,
+        deduceBuildNr,
+        isForDc = true,
+        pluginInfo,
+        BambooDataCenterBuildNrVariableKey
       ),
       minServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = true, isDc = false),
       maxServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = false, isDc = false),
@@ -91,17 +106,20 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     if (upmOpt.isDefined) Some(upmOpt.get)
     else None
 
-  private def deduceHostProductBuildNumber(compatibility: Option[ProductCompatibility],
-                                           baseVersion: AddonVersion,
-                                           isMin: Boolean,
-                                           isDc: Boolean)(implicit mpacFacade: MpacFacade): Option[Int] = {
+  private def deduceHostProductBuildNumber(
+      compatibility: Option[ProductCompatibility],
+      baseVersion: AddonVersion,
+      isMin: Boolean,
+      isDc: Boolean)(implicit mpacFacade: MpacFacade): Option[Int] = {
     compatibility match {
       case Some(c) => // if we have <compatibility> section in atlassian-plugin-marketing.xml, take it from there
         val version = if (isMin) c.getMin else c.getMax
         mpacFacade.getBuildNumber(c.getProduct, Option(version)) match {
           case Left(e) => throw new TaskException(i18nResolver.getText(e.i18n))
           case Right(Some(buildNumber)) => Option(buildNumber)
-          case _ => throw new TaskException(s"No build number found for ${c.getProduct.name()} and version $version")
+          case _ =>
+            throw new TaskException(
+              i18nResolver.getText("shipit.task.no.build.number.found", c.getProduct.name(), version))
         }
       case None => // otherwise, let's take compatibility from the last app version
         val lastCompat = for {
@@ -116,14 +134,15 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
             }
             compatVersion.map(_.toInt)
           case None =>
-            throw new TaskException("No atlassian-plugin-marketing.xml and also no last public app version with compatibility information found")
+            throw new TaskException(i18nResolver.getText("shipit.task.no.marketing.xml.found"))
         }
     }
   }
 
-  private def collectReleaseNotes(projectInfos: JiraProjectData,
-                                  commonContext: CommonContext,
-                                  taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
+  private def collectReleaseNotes(
+      projectInfos: JiraProjectData,
+      commonContext: CommonContext,
+      taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
 
     val summaryAndReleaseNotes = for {
@@ -140,40 +159,47 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def fetchReleaseNotesFromJira(projectInfos: JiraProjectData, taskContext: CommonTaskContext) = {
     val appLink = jiraApplinksService.getJiraApplicationLinks.asScala.headOption.getOrElse(
-      throw new TaskException("JIRA application link not found")
+      throw new TaskException(i18nResolver.getText("shipit.task.jira.appllink.not.found"))
     )
-    val jiraJob = impersonationService.runAsUser(projectInfos.triggerUserName, new Callable[SummaryAndReleaseNotes] {
-      override def call(): SummaryAndReleaseNotes = {
-        try {
-          val requestFactory = appLink.createAuthenticatedRequestFactory()
-          val jiraFacade = new JiraFacade(requestFactory)
-          val releaseSummary = jiraFacade.getVersionDescription(projectInfos.projectKey, projectInfos.version).getOrElse(
-            throw new TaskException(s"No version summary found for JIRA project version ${projectInfos.version}")
-          )
-          val releaseNotes = jiraFacade.collectReleaseNotes(
-            projectKey = projectInfos.projectKey,
-            projectVersion = projectInfos.version,
-            jql = getJqlFromTaskConfig(taskContext)
-          )
-          SummaryAndReleaseNotes(releaseSummary, releaseNotes)
-        } catch {
-          case e: CredentialsRequiredException =>
-            val reauthUrl = e.getAuthorisationURI().toString
-            throw new TaskException(i18nResolver.getText("shipit.task.jira.applink.reauth.necessary", reauthUrl), e)
-          case e: Exception =>
-            log.error("SHIPIT2MARKETPLACE: failed to determine JIRA project info", e)
-            throw new TaskException(i18nResolver.getText("shipit.task.jira.unknown.error", e.getMessage), e)
+    val jiraJob = impersonationService.runAsUser(
+      projectInfos.triggerUserName,
+      new Callable[SummaryAndReleaseNotes] {
+        override def call(): SummaryAndReleaseNotes = {
+          try {
+            val requestFactory = appLink.createAuthenticatedRequestFactory()
+            val jiraFacade = new JiraFacade(requestFactory)
+            val releaseSummary = jiraFacade
+              .getVersionDescription(projectInfos.projectKey, projectInfos.version)
+              .getOrElse(
+                throw new TaskException(
+                  i18nResolver.getText("shipit.task.no.version.summary.found", projectInfos.version))
+              )
+            val releaseNotes = jiraFacade.collectReleaseNotes(
+              projectKey = projectInfos.projectKey,
+              projectVersion = projectInfos.version,
+              jql = getJqlFromTaskConfig(taskContext)
+            )
+            SummaryAndReleaseNotes(releaseSummary, releaseNotes)
+          } catch {
+            case e: CredentialsRequiredException =>
+              val reauthUrl = e.getAuthorisationURI().toString
+              throw new TaskException(i18nResolver.getText("shipit.task.jira.applink.reauth.necessary", reauthUrl), e)
+            case e: Exception =>
+              log.error("SHIPIT2MARKETPLACE: failed to determine JIRA project info", e)
+              throw new TaskException(i18nResolver.getText("shipit.task.jira.unknown.error", e.getMessage), e)
+          }
         }
       }
-    })
+    )
     jiraJob.call()
   }
 
-  private def determineBuildNumber(commonContext: CommonContext,
-                                   deduceBuildNr: Boolean,
-                                   isForDc: Boolean,
-                                   pluginInfo: PluginArtifactDetails,
-                                   bambooBuildNrVariableKey: String) = {
+  private def determineBuildNumber(
+      commonContext: CommonContext,
+      deduceBuildNr: Boolean,
+      isForDc: Boolean,
+      pluginInfo: PluginArtifactDetails,
+      bambooBuildNrVariableKey: String) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     Option(vars.get(bambooBuildNrVariableKey)) match {
       case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.trim.nonEmpty =>
@@ -183,18 +209,16 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         if (isForDc) Utils.toBuildNumber(pluginInfo.getVersion) + 1
         else Utils.toBuildNumber(pluginInfo.getVersion)
       case _ =>
-        throw new TaskException(
-          s"""A build number has to be specified with the Bamboo variable '$bambooBuildNrVariableKey'
-              |if the build number deduction feature is disabled.""".stripMargin.replaceAll("\n", " ")
-        )
+        throw new TaskException(i18nResolver.getText("shipit.task.no.build.number", bambooBuildNrVariableKey))
     }
   }
 
-  private def getParamsForJiraAccess(taskContext: CommonTaskContext,
-                                     pluginInfo: PluginArtifactDetails,
-                                     commonContext: CommonContext) = {
+  private def getParamsForJiraAccess(
+      taskContext: CommonTaskContext,
+      pluginInfo: PluginArtifactDetails,
+      commonContext: CommonContext) = {
     val taskDefinition = getTaskDefinitionFromBuild(commonContext).getOrElse(
-      throw new TaskException("Task definition not found")
+      throw new TaskException(i18nResolver.getText("shipit.task.notaskdef"))
     )
     if (onlyAllowDeployFromJiraReleasePanel(taskContext)) {
       val vars = commonContext.getVariableContext.getEffectiveVariables
@@ -204,18 +228,17 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
         projectVersion <- Option(vars.get("jira.version")) map { _.getValue }
         triggerUserName <- getUserToCollectJiraData(getJiraTriggerUser(commonContext), taskDefinition)
       } yield JiraProjectData(projectKey, projectVersion, triggerUserName)
-      jiraData.getOrElse(throw new TaskException("Was not able to determine necessary parameters to access JIRA"))
+      jiraData.getOrElse(throw new TaskException(i18nResolver.getText("shipit.task.jira.params.not.found")))
     } else {
       val projectKey = Option(taskContext.getConfigurationMap.get(JiraProjectKeyField)).getOrElse(
-        throw new TaskException("JIRA project key must be configured when not triggered from JIRA release panel")
+        throw new TaskException(i18nResolver.getText("shipit.task.project.key.missing"))
       )
       val triggerUserName = taskContext.getCommonContext.getTriggerReason match {
         case m: ManualBuildTriggerReason => Option(m.getUserName)
         case _ => None
       }
       val user = getUserToCollectJiraData(triggerUserName, taskDefinition).getOrElse(
-        throw new TaskException("No valid user found to access JIRA. You might want to configure a Bamboo user " +
-                                "with JIRA permissions in the task configuration.")
+        throw new TaskException(i18nResolver.getText("shipit.task.no.valid.user.found"))
       )
       val projectVersion = pluginInfo.getVersion
       JiraProjectData(projectKey, projectVersion, user)
@@ -226,7 +249,8 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
     commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
 
   private def onlyAllowDeployFromJiraReleasePanel(taskContext: CommonTaskContext) =
-    Option(taskContext.getConfigurationMap.getAsBoolean(IsJiraReleasePanelModeField)).getOrElse(false)
+    Option(taskContext.getConfigurationMap.getAsBoolean(IsJiraReleasePanelModeField))
+      .getOrElse(false)
 
   private def getJqlFromTaskConfig(taskContext: CommonTaskContext) =
     Option(taskContext.getConfigurationMap.get(JqlField)).getOrElse(DefaultJql)
@@ -243,7 +267,9 @@ class NewPluginVersionDataCollector @Autowired()(@ComponentImport jiraApplinksSe
 
   private def getJiraTriggerUser(buildContext: CommonContext) = {
     val vars = buildContext.getVariableContext.getEffectiveVariables
-    Option(vars.get("jira.username")) map { _.getValue }
+    Option(vars.get("jira.username")) map {
+      _.getValue
+    }
   }
 
 }
