@@ -26,6 +26,7 @@ import com.atlassian.plugin.tool.PluginInfoTool
 import com.atlassian.sal.api.message.I18nResolver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import scala.collection.JavaConverters._
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
 @Component
@@ -94,7 +95,7 @@ class ShipItTask @Autowired()(
       taskContext: CommonTaskContext,
       commonContext: CommonContext,
       taskBuilder: TaskResultBuilder): TaskResult =
-    MpacFacade.withMpac(getMpacCredentials) { mpac =>
+    MpacFacade.withMpac(getMpacCredentials) { implicit mpac =>
       val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
       val pluginInfo = PluginInfoTool.parsePluginArtifact(artifact)
@@ -103,30 +104,16 @@ class ShipItTask @Autowired()(
           buildLogger.addErrorLogEntry(i18nResolver.getText(error.i18n))
           taskBuilder.failed().build
         case Right(Some(plugin)) =>
-          findBaseVersionForNewSubmission(plugin.getKey, commonContext, mpac) match {
-            case Left(error) =>
-              val msg = i18nResolver.getText(
-                "shipit.task.plugin.notfound.error",
-                pluginInfo.getKey,
-                i18nResolver.getText(error.i18n))
-              buildLogger.addErrorLogEntry(msg)
-              taskBuilder.failed().build
-            case Right(Some(baseVersion)) =>
-              val pluginMarketing = getPluginMarketingInfo(artifact, taskContext)
-              val newPluginVersion = newPluginDataCollector.collectData(
-                taskContext,
-                commonContext,
-                artifact,
-                baseVersion,
-                pluginInfo,
-                plugin,
-                pluginMarketing
-              )(mpac)
-              uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, mpac, newPluginVersion)
-            case _ =>
-              buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
-              taskBuilder.failed().build
-          }
+          val pluginMarketing = getPluginMarketingInfo(artifact, taskContext)
+          val newPluginVersion = newPluginDataCollector.collectData(
+            taskContext,
+            commonContext,
+            artifact,
+            pluginInfo,
+            plugin,
+            pluginMarketing
+          )
+          uploadNewPluginVersion(taskContext, taskBuilder, buildLogger, newPluginVersion)
         case _ =>
           buildLogger.addErrorLogEntry(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginInfo.getKey))
           taskBuilder.failed().build
@@ -139,7 +126,9 @@ class ShipItTask @Autowired()(
       Option(PluginInfoTool.getPluginDetailsFromJar(is).getMarketingBean)
     } catch {
       case e: Exception if isDcDeployment(taskContext) =>
-        // DC deployment requires atlassian-plugin-marketing.xml
+        // DC deployment requires atlassian-plugin-marketing.xml because we need to pass the base product
+        // to MPAC which we cannot determine without an atlassian-plugin-marketing.xml; we cannot determine
+        // the host product from the plugin details alone, we need the marketing bean
         throw e
       case e: Exception =>
         // we don't necessarily need the marketing plug-in details if non-dc deployment
@@ -150,12 +139,21 @@ class ShipItTask @Autowired()(
     }
   }
 
+  private def isDcDeployment(taskContext: CommonTaskContext) = {
+    val vars = taskContext.getCommonContext.getVariableContext.getEffectiveVariables
+    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
+      case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
+      case None => false
+    }
+    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField))
+      .getOrElse(false) || isDcBuildNrConfigured
+  }
+
   private def uploadNewPluginVersion(
       taskContext: CommonTaskContext,
       taskBuilder: TaskResultBuilder,
       buildLogger: BuildLogger,
-      mpac: MpacFacade,
-      newPluginVersion: NewPluginVersionDetails): TaskResult = {
+      newPluginVersion: NewPluginVersionDetails)(implicit mpac: MpacFacade): TaskResult = {
     debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
@@ -182,16 +180,6 @@ class ShipItTask @Autowired()(
 
   private def isBranchBuildEnabled(taskContext: CommonTaskContext) =
     Option(taskContext.getConfigurationMap.getAsBoolean(RunOnBranchBuildsField)).getOrElse(false)
-
-  private def isDcDeployment(taskContext: CommonTaskContext) = {
-    val vars = taskContext.getCommonContext.getVariableContext.getEffectiveVariables
-    val isDcBuildNrConfigured = Option(vars.get(BambooDataCenterBuildNrVariableKey)) match {
-      case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
-      case None => false
-    }
-    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField))
-      .getOrElse(false) || isDcBuildNrConfigured
-  }
 
   // this is an additional safety check that this build has been triggered from JIRA because
   // the trigger reason JIRA is not always propagated to the deployment project
@@ -234,17 +222,6 @@ class ShipItTask @Autowired()(
       case _ =>
         throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.invalidformat", artifactToDeployId))
     }).getOrElse(throw new TaskException("shipit.task.artifact.deploy.setting.notfound"))
-  }
-
-  private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext, mpac: MpacFacade) = {
-    val vars = commonContext.getVariableContext.getEffectiveVariables
-    Option(vars.get(BambooVariables.BambooPluginBaseVersionVariableKey)) match {
-      case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
-        // Bamboo variable has always precedence
-        mpac.getVersion(pluginKey, Option(baseVersion.getValue))
-      case _ =>
-        mpac.getVersion(pluginKey)
-    }
   }
 
 }

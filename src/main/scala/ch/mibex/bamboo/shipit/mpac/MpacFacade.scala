@@ -37,23 +37,24 @@ case class NewPluginVersionDetails(
     isPublicVersion: Boolean,
     releaseSummary: String,
     releaseNotes: String) {
+
   override def toString: String =
     s"""plugin=${plugin.getKey},
-        |baseVersion=${baseVersion.getName},
-        |minServerBuildNumber=${minServerBuildNumber.getOrElse("?")},
-        |maxServerBuildNumber=${maxServerBuildNumber.getOrElse("?")},
-        |minDataCenterBuildNumber=${minDataCenterBuildNumber.getOrElse("?")},
-        |maxDataCenterBuildNumber=${maxDataCenterBuildNumber.getOrElse("?")},
-        |baseProduct=${baseProduct.getOrElse("?")},
-        |versionNumber=$versionNumber,
-        |isDcBuildNrConfigured=$isDcBuildNrConfigured,
-        |createDcVersionToo=$createDcVersionToo,
-        |serverBuildNumber=$serverBuildNumber,
-        |dataCenterBuildNumber=$dataCenterBuildNumber,
-        |userName=${userName.getOrElse("?")},
-        |isPublicVersion=$isPublicVersion,
-        |releaseSummary=$releaseSummary,
-        |releaseNotes=$releaseNotes)
+       |baseVersion=${baseVersion.getName.getOrElse("?")},
+       |minServerBuildNumber=${minServerBuildNumber.getOrElse("?")},
+       |maxServerBuildNumber=${maxServerBuildNumber.getOrElse("?")},
+       |minDataCenterBuildNumber=${minDataCenterBuildNumber.getOrElse("?")},
+       |maxDataCenterBuildNumber=${maxDataCenterBuildNumber.getOrElse("?")},
+       |baseProduct=${baseProduct.getOrElse("?")},
+       |versionNumber=$versionNumber,
+       |isDcBuildNrConfigured=$isDcBuildNrConfigured,
+       |createDcVersionToo=$createDcVersionToo,
+       |serverBuildNumber=$serverBuildNumber,
+       |dataCenterBuildNumber=$dataCenterBuildNumber,
+       |userName=${userName.getOrElse("?")},
+       |isPublicVersion=$isPublicVersion,
+       |releaseSummary=$releaseSummary,
+       |releaseNotes=$releaseNotes)
      """.stripMargin
 }
 

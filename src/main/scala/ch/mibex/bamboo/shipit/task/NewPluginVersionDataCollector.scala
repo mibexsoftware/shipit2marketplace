@@ -43,10 +43,9 @@ class NewPluginVersionDataCollector @Autowired()(
       taskContext: CommonTaskContext,
       context: CommonContext,
       artifact: File,
-      baseVersion: AddonVersion,
       pluginInfo: PluginArtifactDetails,
       plugin: Addon,
-      pluginMarketing: Option[PluginMarketing])(implicit mpacFacade: MpacFacade): NewPluginVersionDetails = {
+      pluginMarketing: Option[PluginMarketing])(implicit mpac: MpacFacade): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
     val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField))
@@ -68,7 +67,7 @@ class NewPluginVersionDataCollector @Autowired()(
     val createDcDeploymentToo =
       Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false)
     val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
-
+    val baseVersion = findBaseVersionForNewSubmission(plugin.getKey, context)
     NewPluginVersionDetails(
       plugin = plugin,
       baseVersion = baseVersion,
@@ -86,10 +85,10 @@ class NewPluginVersionDataCollector @Autowired()(
         pluginInfo,
         BambooDataCenterBuildNrVariableKey
       ),
-      minServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = true, isDc = false),
-      maxServerBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = false, isDc = false),
-      minDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = true, isDc = true),
-      maxDataCenterBuildNumber = deduceHostProductBuildNumber(compatibility, baseVersion, isMin = false, isDc = true),
+      minServerBuildNumber = deduceHostProductCompatibility(compatibility, baseVersion, isMin = true, isDc = false),
+      maxServerBuildNumber = deduceHostProductCompatibility(compatibility, baseVersion, isMin = false, isDc = false),
+      minDataCenterBuildNumber = deduceHostProductCompatibility(compatibility, baseVersion, isMin = true, isDc = true),
+      maxDataCenterBuildNumber = deduceHostProductCompatibility(compatibility, baseVersion, isMin = false, isDc = true),
       userName = getJiraTriggerUser(context),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
@@ -102,19 +101,35 @@ class NewPluginVersionDataCollector @Autowired()(
     )
   }
 
-  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
-    if (upmOpt.isDefined) Some(upmOpt.get)
-    else None
+  private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext)(
+      implicit mpac: MpacFacade) = {
+    val vars = commonContext.getVariableContext.getEffectiveVariables
+    val result = Option(vars.get(BambooVariables.BambooPluginBaseVersionVariableKey)) match {
+      case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
+        // Bamboo variable has always precedence
+        mpac.getVersion(pluginKey, Option(baseVersion.getValue))
+      case _ =>
+        mpac.getVersion(pluginKey)
+    }
+    result match {
+      case Left(error) =>
+        val msg = i18nResolver.getText("shipit.task.plugin.notfound.error", pluginKey, i18nResolver.getText(error.i18n))
+        throw new TaskException(msg)
+      case Right(Some(baseVersion)) => baseVersion
+      case _ =>
+        throw new TaskException(i18nResolver.getText("shipit.task.plugin.notfound.error", pluginKey))
+    }
+  }
 
-  private def deduceHostProductBuildNumber(
-      compatibility: Option[ProductCompatibility],
+  private def deduceHostProductCompatibility(
+      compatibilityOpt: Option[ProductCompatibility],
       baseVersion: AddonVersion,
       isMin: Boolean,
-      isDc: Boolean)(implicit mpacFacade: MpacFacade): Option[Int] = {
-    compatibility match {
+      isDc: Boolean)(implicit mpac: MpacFacade): Option[Int] = {
+    compatibilityOpt match {
       case Some(c) => // if we have <compatibility> section in atlassian-plugin-marketing.xml, take it from there
         val version = if (isMin) c.getMin else c.getMax
-        mpacFacade.getBuildNumber(c.getProduct, Option(version)) match {
+        mpac.getBuildNumber(c.getProduct, Option(version)) match {
           case Left(e) => throw new TaskException(i18nResolver.getText(e.i18n))
           case Right(Some(buildNumber)) => Option(buildNumber)
           case _ =>
@@ -136,6 +151,7 @@ class NewPluginVersionDataCollector @Autowired()(
           case None =>
             throw new TaskException(i18nResolver.getText("shipit.task.no.marketing.xml.found"))
         }
+      case _ => None
     }
   }
 
@@ -271,5 +287,9 @@ class NewPluginVersionDataCollector @Autowired()(
       _.getValue
     }
   }
+
+  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
+    if (upmOpt.isDefined) Some(upmOpt.get)
+    else None
 
 }
