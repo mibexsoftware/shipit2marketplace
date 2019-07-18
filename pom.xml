@@ -10,15 +10,17 @@
         <url>https://www.mibexsoftware.com</url>
     </organization>
     <name>ShipIt to Marketplace for Bamboo</name>
-    <description>No manual uploads and duplicating release notes anymore - ship your p2 plug-ins to the Atlassian Marketplace with one click</description>
+    <description>No manual uploads and duplicating release notes anymore - ship your p2 apps to the Atlassian Marketplace with one click</description>
     <packaging>atlassian-plugin</packaging>
     <properties>
         <bamboo.version>6.0.0</bamboo.version>
-        <bamboo.data.version>3.2.2</bamboo.data.version>
+        <bamboo.data.version>6.0.0</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
         <amps.version>6.3.6</amps.version>
         <xvfb.enable>true</xvfb.enable>
-        <scala.version>2.11.4</scala.version>
+        <scala.version>2.11</scala.version>
+        <scala.full.version>${scala.version}.4</scala.full.version>
+        <scalafmt.version>1.5.1</scalafmt.version>
         <!-- mpac forces us to use Scala 2.11 -->
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
@@ -66,7 +68,7 @@
             <dependency>
                 <groupId>org.scala-lang</groupId>
                 <artifactId>scala-library</artifactId>
-                <version>${scala.version}</version>
+                <version>${scala.full.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -111,10 +113,16 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.2.1</version>
                 <configuration>
+                    <compilerPlugins>
+                        <compilerPlugin>
+                            <groupId>org.wartremover</groupId>
+                            <artifactId>wartremover_2.11</artifactId>
+                            <version>2.4.2</version>
+                        </compilerPlugin>
+                    </compilerPlugins>
                     <args>
-                        <arg>-target:jvm-1.8</arg>
                         <arg>-encoding</arg>
                         <arg>utf8</arg>
                         <arg>-unchecked</arg>
@@ -125,6 +133,7 @@
                         <arg>-Ywarn-unused</arg>
                         <arg>-feature</arg>
                         <arg>-explaintypes</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Unsafe</arg>
                     </args>
                 </configuration>
                 <!--
@@ -144,6 +153,19 @@
                             <goal>testCompile</goal>
                         </goals>
                         <phase>test-compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.antipathy</groupId>
+                <artifactId>mvn-scalafmt_${scala.version}</artifactId>
+                <version>0.10_${scalafmt.version}</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>format</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -200,7 +222,7 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
-            <version>${scala.version}</version>
+            <version>${scala.full.version}</version>
         </dependency>
         <dependency>
             <groupId>com.atlassian.bamboo</groupId>
