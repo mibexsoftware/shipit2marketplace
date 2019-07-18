@@ -13,10 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
-
-
 @Component
-class SubscribedArtifactCollector @Autowired() (@ComponentImport i18nResolver: I18nResolver) {
+class SubscribedArtifactCollector @Autowired()(@ComponentImport i18nResolver: I18nResolver) {
 
   def buildArtifactUiList(job: ImmutableJob): Seq[WwSelectOption] =
     job.getArtifactSubscriptions.asScala map { as =>

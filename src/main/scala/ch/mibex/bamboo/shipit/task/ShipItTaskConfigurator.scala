@@ -46,18 +46,20 @@ object ShipItTaskConfigurator {
 }
 
 @Component
-class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: EncryptionService,
-                                          @ComponentImport jiraApplinksService: JiraApplinksService,
-                                          @ComponentImport impersonationService: ImpersonationService,
-                                          @ComponentImport configAccessor: AdministrationConfigurationAccessor,
-                                          @ComponentImport bambooUserManager: BambooUserManager,
-                                          @ComponentImport variableDefinitionManager: VariableDefinitionManager,
-                                          @ComponentImport planManager: PlanManager,
-                                          @ComponentImport bambooAuthContext: BambooAuthenticationContext,
-                                          mpacCredentialsDao: AdminSettingsDao,
-                                          downloaderArtifactCollector: DownloaderArtifactCollector,
-                                          subscribedArtifactCollector: SubscribedArtifactCollector)
-  extends AbstractTaskConfigurator with Logging {
+class ShipItTaskConfigurator @Autowired()(
+    @ComponentImport encryptionService: EncryptionService,
+    @ComponentImport jiraApplinksService: JiraApplinksService,
+    @ComponentImport impersonationService: ImpersonationService,
+    @ComponentImport configAccessor: AdministrationConfigurationAccessor,
+    @ComponentImport bambooUserManager: BambooUserManager,
+    @ComponentImport variableDefinitionManager: VariableDefinitionManager,
+    @ComponentImport planManager: PlanManager,
+    @ComponentImport bambooAuthContext: BambooAuthenticationContext,
+    mpacCredentialsDao: AdminSettingsDao,
+    downloaderArtifactCollector: DownloaderArtifactCollector,
+    subscribedArtifactCollector: SubscribedArtifactCollector)
+    extends AbstractTaskConfigurator
+    with Logging {
 
   import Constants._
   import ShipItTaskConfigurator._
@@ -100,8 +102,9 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
         downloaderArtifactCollector.buildArtifactUiList(env.getTaskDefinitions.asScala)
     }
 
-  override def generateTaskConfigMap(actionParams: ActionParametersMap,
-                                     taskDefinition: TaskDefinition): JMap[String, String] = {
+  override def generateTaskConfigMap(
+      actionParams: ActionParametersMap,
+      taskDefinition: TaskDefinition): JMap[String, String] = {
     val config = Maps.newHashMap[String, String]()
     config.put(UserNameField, actionParams.getString(UserNameField))
     config.put(IsJiraReleasePanelModeField, actionParams.getBoolean(IsJiraReleasePanelModeField).toString)
@@ -140,7 +143,7 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
         val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, password)
         MpacFacade.withMpac(vendorCredentials) { mpac =>
           mpac.checkCredentials() foreach {
-            case error@MpacAuthenticationError() => errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
+            case error @ MpacAuthenticationError() => errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
             case error => errors.addErrorMessage(getText(error.i18n))
           }
         }
@@ -180,9 +183,10 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     // we have to use the i18nBean instead of TextProvider because the latter is not able to use i18n args
     bambooAuthContext.getI18NBean.getText(i18NKey, Array(params: _*))
 
-  private def checkJiraConnectionWhenUserGiven(actionParams: ActionParametersMap,
-                                               applLink: ApplicationLink,
-                                               errors: ErrorCollection) {
+  private def checkJiraConnectionWhenUserGiven(
+      actionParams: ActionParametersMap,
+      applLink: ApplicationLink,
+      errors: ErrorCollection) {
     Option(actionParams.getString(UserNameField)) match {
       case Some(userName) if userName.trim.nonEmpty => // user can be an empty string when passed from the task
         if (Option(bambooUserManager.getBambooUser(userName)).isEmpty) {
@@ -194,36 +198,40 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
     }
   }
 
-  private def checkJiraApplicationLink(jiraApplicationLink: ApplicationLink,
-                                       userName: String,
-                                       errors: ErrorCollection) {
-    val jiraApplLinkCheck = impersonationService.runAsUser(userName, new Callable[Unit] {
-      override def call(): Unit = {
-        try {
-          val requestFactory = jiraApplicationLink.createAuthenticatedRequestFactory()
-          val jiraFacade = new JiraFacade(requestFactory)
-          jiraFacade.getServerInfo(new ApplicationLinkResponseHandler[Unit]() {
+  private def checkJiraApplicationLink(
+      jiraApplicationLink: ApplicationLink,
+      userName: String,
+      errors: ErrorCollection) {
+    val jiraApplLinkCheck = impersonationService.runAsUser(
+      userName,
+      new Callable[Unit] {
+        override def call(): Unit = {
+          try {
+            val requestFactory = jiraApplicationLink.createAuthenticatedRequestFactory()
+            val jiraFacade = new JiraFacade(requestFactory)
+            jiraFacade.getServerInfo(new ApplicationLinkResponseHandler[Unit]() {
 
-            override def credentialsRequired(response: Response): Unit = {
-              // FIXME we could provide a callback URL to getAuthorisationURI, but I don't know how to get the
-              // URL of the current screen in Bamboo
-              val reauthUrl = requestFactory.getAuthorisationURI().toString
-              errors.addErrorMessage(getText("shipit.task.config.jira.credentials.error", reauthUrl))
-            }
-
-            override def handle(response: Response): Unit = {
-              if (!response.isSuccessful) {
-                errors.addErrorMessage(getText("shipit.task.config.jira.connection.error", response.getStatusText))
+              override def credentialsRequired(response: Response): Unit = {
+                // FIXME we could provide a callback URL to getAuthorisationURI, but I don't know how to get the
+                // URL of the current screen in Bamboo
+                val reauthUrl = requestFactory.getAuthorisationURI().toString
+                errors.addErrorMessage(getText("shipit.task.config.jira.credentials.error", reauthUrl))
               }
-            }
-          })
-        } catch {
-          case e: CredentialsRequiredException =>
-            val reauthUrl = e.getAuthorisationURI().toString
-            errors.addErrorMessage(getText("shipit.task.config.jira.credentials.error", reauthUrl))
+
+              override def handle(response: Response): Unit = {
+                if (!response.isSuccessful) {
+                  errors.addErrorMessage(getText("shipit.task.config.jira.connection.error", response.getStatusText))
+                }
+              }
+            })
+          } catch {
+            case e: CredentialsRequiredException =>
+              val reauthUrl = e.getAuthorisationURI().toString
+              errors.addErrorMessage(getText("shipit.task.config.jira.credentials.error", reauthUrl))
+          }
         }
       }
-    })
+    )
     jiraApplLinkCheck.call()
   }
 
@@ -244,35 +252,5 @@ class ShipItTaskConfigurator @Autowired()(@ComponentImport encryptionService: En
   private def getJiraApplicationLink = jiraApplinksService.getJiraApplicationLinks.asScala.headOption
 
   private def getBambooBaseUrl = configAccessor.getAdministrationConfiguration.getBaseUrl
-
-  // we cannot create plan variables in populateContextForEdit or populateContextForCreate because the XSRF checks
-  // do not allow us to do this (mutative operation in GET request error!):
-  //     taskDefinition.getConfiguration.get("plan") match {
-  //      case job: Job => createPlanVariablesIfNecessary(job.getParent)
-  //      case _ => // deployment project
-  //        actionParams.get("relatedPlan") match {
-  //          case plan: ImmutableChain =>
-  //            createPlanVariablesIfNecessary(planManager.getPlanByKey(plan.getPlanKey, classOf[Chain]))
-  //          case _ =>
-  //        }
-  //    }
-  // and in generateTaskConfigMap we do not know the plan key; so the user has to create these plan variables
-  // manually at the moment
-  //  private def createPlanVariablesIfNecessary(chain: Chain) {
-  //    val variableFactory = new VariableDefinitionFactoryImpl()
-  //    val emptyValue = null
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooBuildNrVariableKey)).isEmpty) {
-  //      val buildNrGlobalVar = variableFactory.createPlanVariable(chain, BambooBuildNrVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(buildNrGlobalVar)
-  //    }
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseSummaryVariableKey)).isEmpty) {
-  //      val releaseSummaryVar = variableFactory.createPlanVariable(chain, BambooReleaseSummaryVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(releaseSummaryVar)
-  //    }
-  //    if (Option(variableDefinitionManager.getPlanVariableByKey(chain, BambooReleaseNotesVariableKey)).isEmpty) {
-  //      val releaseNotesVar = variableFactory.createPlanVariable(chain, BambooReleaseNotesVariableKey, emptyValue)
-  //      variableDefinitionManager.saveVariableDefinition(releaseNotesVar)
-  //    }
-  //  }
 
 }

@@ -3,7 +3,6 @@ package ch.mibex.bamboo.shipit.task.artifacts
 import com.atlassian.bamboo.plan.artifact.{ImmutableArtifactDefinition, ImmutableArtifactSubscription}
 import com.atlassian.bamboo.task.TaskDefinition
 
-
 case class ArtifactSubscriptionId(artifactIdParam: Long, artifactNameParam: String) {
   override def toString = s"$artifactIdParam:$artifactNameParam"
 }
@@ -28,10 +27,11 @@ object ArtifactSubscriptionId {
 
 }
 
-case class ArtifactDownloaderTaskId(artifactIdParam: Long,
-                                    artifactNameParam: String,
-                                    downloaderTaskId: Long,
-                                    transferId: Int) {
+case class ArtifactDownloaderTaskId(
+    artifactIdParam: Long,
+    artifactNameParam: String,
+    downloaderTaskId: Long,
+    transferId: Int) {
   override def toString = s"$artifactIdParam:$artifactNameParam:$downloaderTaskId:$transferId"
 }
 

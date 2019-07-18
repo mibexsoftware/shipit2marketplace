@@ -1,6 +1,5 @@
 package ch.mibex.bamboo.shipit
 
-
 object Constants {
   val ResultLinkPluginBinaryUrl = "shipItPluginBinaryUrl"
   val ResultLinkPluginVersion = "shipItPluginVersion"

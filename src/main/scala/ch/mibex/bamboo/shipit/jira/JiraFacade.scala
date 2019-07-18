@@ -22,7 +22,6 @@ case class JiraProjectVersion(name: String, description: Option[String])
 
 case class ReauthNecessary(url: String)
 
-
 object JiraFacade {
 
   val issueTypeRenamings = Map(
@@ -33,9 +32,10 @@ object JiraFacade {
   )
 
   def toReleaseNotes(issues: Seq[JiraIssue]): String = {
-    var releaseNotes = issues.groupBy(_.issueType) map { case (issueType, issuesByType) =>
-      issueTypeRenamings.getOrElse(issueType, issueType) + ":<p>" +
-        issuesByType.map(i => s"* ${i.summary}").mkString("<p>")
+    var releaseNotes = issues.groupBy(_.issueType) map {
+      case (issueType, issuesByType) =>
+        issueTypeRenamings.getOrElse(issueType, issueType) + ":<p>" +
+          issuesByType.map(i => s"* ${i.summary}").mkString("<p>")
     } mkString "<p><p>"
     if (releaseNotes.length > MaxReleaseNotesLength) {
       val abbreviation = "...<p>* ..."
@@ -81,8 +81,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   def getVersionDescription(projectKey: String, projectVersion: String): Option[String] = {
     val response = doGet(s"rest/api/2/project/$projectKey/versions")
     import ProjectVersionProtocol._
-    response
-      .parseJson
+    response.parseJson
       .convertTo[List[JiraProjectVersion]]
       .find(_.name == projectVersion)
       .flatMap(_.description)
@@ -91,8 +90,7 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   def findAllProjects(): List[JiraProject] = {
     val response = doGet("rest/api/2/project")
     import ProjectProtocol._
-    response
-      .parseJson
+    response.parseJson
       .convertTo[List[JiraProject]]
   }
 
