@@ -16,7 +16,7 @@
         <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>6.0.0</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>6.3.6</amps.version>
+        <amps.version>8.0.1</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.11</scala.version>
         <scala.full.version>${scala.version}.4</scala.full.version>
@@ -171,21 +171,25 @@
             </plugin>
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
-                <artifactId>maven-bamboo-plugin</artifactId>
+                <artifactId>bamboo-maven-plugin</artifactId>
                 <version>${amps.version}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <productVersion>${bamboo.version}</productVersion>
                     <productDataVersion>${bamboo.data.version}</productDataVersion>
                     <!--<productDataPath>${bamboo.data.path}</productDataPath>-->
-                    <enableFastdev>false</enableFastdev>
                     <enableQuickReload>true</enableQuickReload>
                     <extractDependencies>false</extractDependencies>
                     <allowGoogleTracking>false</allowGoogleTracking>
                     <instructions>
                         <Atlassian-Plugin-Key>${atlassian.plugin.key}</Atlassian-Plugin-Key>
                         <!-- Add package import here -->
-                        <Import-Package>org.springframework.osgi.*;resolution:="optional", org.eclipse.gemini.blueprint.*;resolution:="optional", com.atlassian.plugin.osgi.bridge.external, *;resolution:=optional</Import-Package>
+                        <Import-Package>
+                            org.springframework.osgi.*;resolution:="optional",
+                            org.eclipse.gemini.blueprint.*;resolution:="optional",
+                            com.atlassian.plugin.osgi.bridge.external,
+                            *;resolution:=optional
+                        </Import-Package>
                         <Export-Package/>
                         <!-- Ensure plugin is spring powered - see https://extranet.atlassian.com/x/xBS9hQ  -->
                         <Spring-Context>*</Spring-Context>
