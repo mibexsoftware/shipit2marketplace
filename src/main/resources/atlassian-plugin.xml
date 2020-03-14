@@ -3,7 +3,7 @@
         <description>${project.description}</description>
         <version>${project.version}</version>
         <vendor name="${project.organization.name}" url="${project.organization.url}" />
-        <param name="plugin-icon">images/pluginIcon.png</param>
+        <param name="plugin-icon">images/pluginIcon.jpg</param>
         <param name="plugin-logo">images/pluginLogo.jpg</param>
         <param name="configure.url">/admin/shipit2mpac/viewShip2MpacConfiguration.action</param>
     </plugin-info>
@@ -27,7 +27,7 @@
         <configuration class="ch.mibex.bamboo.shipit.task.ShipItTaskConfigurator"/>
         <resource type="freemarker" name="edit" location="templates/task-config.ftl"/>
         <help link="shipit.task.help.link" title="shipit.task.help.link.title" />
-        <resource type="download" name="icon" location="images/pluginTask.png"/> <!-- 80 by 80 pixels transparent -->
+        <resource type="download" name="icon" location="images/pluginTask.jpg"/> <!-- 80 by 80 pixels transparent -->
     </taskType>
 
     <!-- Link to Marketplace build -->
