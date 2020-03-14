@@ -262,7 +262,7 @@ class NewPluginVersionDataCollector @Autowired()(
   }
 
   private def getTaskDefinitionFromBuild(commonContext: CommonContext) =
-    commonContext.getTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
+    commonContext.getRuntimeTaskDefinitions.asScala.find(_.getPluginKey == FullyQualifiedPluginTaskKey)
 
   private def onlyAllowDeployFromJiraReleasePanel(taskContext: CommonTaskContext) =
     Option(taskContext.getConfigurationMap.getAsBoolean(IsJiraReleasePanelModeField))

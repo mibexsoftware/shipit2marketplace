@@ -32,19 +32,17 @@ class DownloaderArtifactCollector @Autowired()(
       artifactId: Long,
       downloaderTaskId: Long,
       transferId: Int): Option[File] =
-    taskContext.getCommonContext.getTaskDefinitions.asScala
+    taskContext.getCommonContext.getRuntimeTaskDefinitions.asScala
       .find(t => t.getId == downloaderTaskId)
       .flatMap(downloaderTask => {
         val downloaderContext = getDownloaderContext(taskContext, downloaderTask)
         getRuntimeArtifactIds(transferId, downloaderContext) find { rai =>
           ArtifactDownloaderTaskConfigurationHelper.getArtifactId(downloaderContext, rai) == artifactId
-        } flatMap {
-          ai =>
-            val copyPattern = ArtifactDownloaderTaskConfigurationHelper.getCopyPattern(downloaderContext, ai)
-            val subst =
-              variableContext.substituteString(copyPattern, taskContext.getCommonContext, taskContext.getBuildLogger)
-            val localPath = ArtifactDownloaderTaskConfigurationHelper.getLocalPath(downloaderContext, ai)
-            Utils.findMostRecentMatchingFile(subst, new File(taskContext.getWorkingDirectory, localPath))
+        } flatMap { ai =>
+          val copyPattern = ArtifactDownloaderTaskConfigurationHelper.getCopyPattern(downloaderContext, ai)
+          val subst = variableContext.substituteString(copyPattern)
+          val localPath = ArtifactDownloaderTaskConfigurationHelper.getLocalPath(downloaderContext, ai)
+          Utils.findMostRecentMatchingFile(subst, new File(taskContext.getWorkingDirectory, localPath))
         }
       })
 
