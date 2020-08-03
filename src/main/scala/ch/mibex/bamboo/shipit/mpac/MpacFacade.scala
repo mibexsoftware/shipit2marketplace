@@ -8,7 +8,7 @@ import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConne
 import com.atlassian.fugue
 import com.atlassian.marketplace.client.api._
 import com.atlassian.marketplace.client.http.HttpConfiguration
-import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
+import com.atlassian.marketplace.client.http.HttpConfiguration.{Credentials, DEFAULT_READ_TIMEOUT_MILLIS}
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
@@ -84,6 +84,7 @@ object MpacFacade {
     val c = new Credentials(credentials.vendorUserName, credentials.vendorPassword)
     val httpConfig = HttpConfiguration
       .builder()
+      .readTimeoutMillis(2 * DEFAULT_READ_TIMEOUT_MILLIS) // Increase read timeout to work around slow marketplace responses.
       .credentials(fugue.Option.some(c))
       .build()
     val client = new DefaultMarketplaceClient(DefaultMarketplaceClient.DEFAULT_SERVER_URI, httpConfig)
