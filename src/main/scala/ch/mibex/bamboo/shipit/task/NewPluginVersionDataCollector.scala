@@ -188,7 +188,8 @@ class NewPluginVersionDataCollector @Autowired()(
               .getVersionDescription(projectInfos.projectKey, projectInfos.version)
               .getOrElse(
                 throw new TaskException(
-                  i18nResolver.getText("shipit.task.no.version.summary.found", projectInfos.version))
+                  i18nResolver
+                    .getText("shipit.task.no.version.summary.found", projectInfos.projectKey, projectInfos.version))
               )
             val releaseNotes = jiraFacade.collectReleaseNotes(
               projectKey = projectInfos.projectKey,
