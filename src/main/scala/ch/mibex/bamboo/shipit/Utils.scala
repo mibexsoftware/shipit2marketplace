@@ -3,14 +3,15 @@ package ch.mibex.bamboo.shipit
 import java.io.File
 import java.util.concurrent.Callable
 import com.atlassian.bamboo.utils.FileVisitor
-import com.atlassian.fugue
+import io.atlassian.fugue
 import com.atlassian.plugin.Application
 import com.atlassian.plugin.parsers.XmlDescriptorParser
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
-import scala.collection.JavaConverters._
+import java.util.Optional
+import scala.jdk.CollectionConverters._
 
 object Utils {
 
@@ -29,7 +30,7 @@ object Utils {
     }
 
     def read(value: JsValue) = value match {
-      case JsNumber(n) => n.intValue()
+      case JsNumber(n) => n.intValue
       case JsString(s) => s
       case a: JsArray => listFormat[Any].read(value)
       case o: JsObject => mapFormat[String, Any].read(value)
@@ -66,9 +67,8 @@ object Utils {
       }
     }
     namesVisitor.visitFilesThatMatch(filePattern)
-    val lastModified = Ordering.by((_: File).lastModified)
     // if we don't take the most recent one, we might upload old plug-in versions
-    rawArtifacts.reduceOption(lastModified.max)
+    rawArtifacts.maxByOption(_.lastModified())
   }
 
   def toBuildNumber(versionString: String, shortVersion: Boolean = false): Int = {
@@ -88,6 +88,7 @@ object Utils {
 
     (majorStr + minorStr + incStr).toInt
   }
+
   // Use like this:
   // import Utils.functionToUncheckedOp
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({
@@ -106,4 +107,22 @@ object Utils {
   implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
     if (upmOpt.isDefined) Some(upmOpt.get)
     else None
+
+  /**
+    * Conversions between Scala Option and Java 8 Optional.
+    */
+  object JavaOptionals {
+    implicit def toRichOption[T](opt: Option[T]): RichOption[T] = new RichOption[T](opt)
+    implicit def toRichOptional[T](optional: Optional[T]): RichOptional[T] = new RichOptional[T](optional)
+  }
+
+  class RichOption[T](opt: Option[T]) {
+
+    def toOptional: Optional[T] = Optional.ofNullable(opt.getOrElse(null).asInstanceOf[T])
+  }
+
+  class RichOptional[T](opt: Optional[T]) {
+
+    def toOption: Option[T] = if (opt.isPresent) Some(opt.get()) else None
+  }
 }

@@ -29,14 +29,14 @@ import java.io.{File, FileInputStream}
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
 @Component
-class ShipItTask @Autowired()(
+class ShipItTask @Autowired() (
     @ComponentImport encryptionService: EncryptionService,
     @ComponentImport i18nResolver: I18nResolver,
     mpacCredentialsDao: AdminSettingsDao,
     buildArtifactCollector: DownloaderArtifactCollector,
     newPluginDataCollector: NewPluginVersionDataCollector,
-    subscribedArtifactCollector: SubscribedArtifactCollector)
-    extends TaskType
+    subscribedArtifactCollector: SubscribedArtifactCollector
+) extends TaskType
     with DeploymentTaskType
     with Logging {
 
@@ -63,7 +63,8 @@ class ShipItTask @Autowired()(
       taskContext: CommonTaskContext,
       commonContext: CommonContext,
       isAllowedTriggerReason: TriggerReason => Boolean,
-      isBranchBuild: Boolean) = {
+      isBranchBuild: Boolean
+  ) = {
     val buildLogger = taskContext.getBuildLogger
     val taskBuilder = TaskResultBuilder.newBuilder(taskContext)
 
@@ -92,7 +93,8 @@ class ShipItTask @Autowired()(
   private def createNewPluginVersion(
       taskContext: CommonTaskContext,
       commonContext: CommonContext,
-      taskBuilder: TaskResultBuilder): TaskResult =
+      taskBuilder: TaskResultBuilder
+  ): TaskResult =
     MpacFacade.withMpac(getMpacCredentials) { implicit mpac =>
       val buildLogger = taskContext.getBuildLogger
       val artifact = findArtifact(taskContext)
@@ -151,7 +153,8 @@ class ShipItTask @Autowired()(
       taskContext: CommonTaskContext,
       taskBuilder: TaskResultBuilder,
       buildLogger: BuildLogger,
-      newPluginVersion: NewPluginVersionDetails)(implicit mpac: MpacFacade): TaskResult = {
+      newPluginVersion: NewPluginVersionDetails
+  )(implicit mpac: MpacFacade): TaskResult = {
     debug(s"SHIPIT2MARKETPLACE: new plug-in version to upload: $newPluginVersion")
     mpac.publish(newPluginVersion) match {
       case Right(newVersion) =>
@@ -223,7 +226,8 @@ class ShipItTask @Autowired()(
         throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.invalidformat", artifactToDeployId))
     }).getOrElse(throw new TaskException("shipit.task.artifact.deploy.setting.notfound"))
     taskContext.getBuildLogger.addBuildLogEntry(
-      s"ShipIt to Marketplace task: will use ${artifact.getAbsolutePath} as artifact")
+      s"ShipIt to Marketplace task: will use ${artifact.getAbsolutePath} as artifact"
+    )
     artifact
   }
 

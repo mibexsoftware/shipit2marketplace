@@ -9,8 +9,6 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.Scope
-
-
 @RunWith(classOf[JUnitRunner])
 class JiraFacadeTest extends Specification with Mockito {
 
@@ -19,18 +17,13 @@ class JiraFacadeTest extends Specification with Mockito {
     "separate issues by type" in {
       val bug1 = JiraIssue(key = "TEST-1", summary = "Fixed authentication error", issueType = "Bug")
       val feature = JiraIssue(key = "TEST-2", summary = "New help system", issueType = "Feature")
-      val improvement = JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
+      val improvement =
+        JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
       val bug2 = JiraIssue(key = "TEST-4", summary = "Database error with Oracle 9.1", issueType = "Bug")
       JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must_==
-        """Bug fixes:<p>
-          |* Fixed authentication error<p>
-          |* Database error with Oracle 9.1<p>
-          |<p>
-          |New features:<p>
-          |* New help system<p>
-          |<p>
-          |Improvements:<p>
-          |* Improved colors in the UI dialogs""".stripMargin.replace("\n", "")
+        "Improvements:<p>* Improved colors in the UI dialogs<p>" +
+          "<p>Bug fixes:<p>* Fixed authentication error<p>* Database error with Oracle 9.1<p>" +
+          "<p>New features:<p>* New help system"
     }
 
   }
@@ -57,13 +50,15 @@ class JiraFacadeTest extends Specification with Mockito {
         key = "TEST-4",
         summary = """ORA-00001: unique constraint (string.string) violated:
                     |An UPDATE or INSERT statement attempted to insert a duplicate key. For Trusted Oracle configured in
-                    |DBMS MAC mode, you may see this message if a duplicate entry exists at a different level.""".stripMargin.replace("\n", ""),
+                    |DBMS MAC mode, you may see this message if a duplicate entry exists at a different level.""".stripMargin
+          .replace("\n", ""),
         issueType = "Bug"
       )
       val bug3 = JiraIssue(
         key = "TEST-5",
         summary = """ORA-00017: session requested to set trace event:
-                    |The current session was requested to set a trace event by another session.""".stripMargin.replace("\n", ""),
+                    |The current session was requested to set a trace event by another session.""".stripMargin
+          .replace("\n", ""),
         issueType = "Bug"
       )
       val bug4 = JiraIssue(
@@ -82,7 +77,8 @@ class JiraFacadeTest extends Specification with Mockito {
           """ORA-00031: session marked for kill:
             |The session specified in an ALTER SYSTEM KILL SESSION command cannot be killed immediately
             |(because it is rolling back or blocked on a network operation), but it has been marked for kill.
-            |This means it will be killed as soon as possible after its current uninterruptable operation is done.""".stripMargin.replace("\n", ""),
+            |This means it will be killed as soon as possible after its current uninterruptable operation is done.""".stripMargin
+            .replace("\n", ""),
         issueType = "Bug"
       )
       JiraFacade.toReleaseNotes(List(bug1, bug2, bug3, bug4, bug5)) must_==
@@ -119,7 +115,8 @@ class JiraFacadeTest extends Specification with Mockito {
     val applicationLinkRequestFactory = mock[ApplicationLinkRequestFactory]
     val projectKey = "SHIPIT"
     val projectVersion = "1.0.0"
-    val url = "rest/api/2/search?jql=project%3DSHIPIT+AND+fixVersion%3D1.0.0++AND+status+in+%28resolved%2Cclosed%2Cdone%29"
+    val url =
+      "rest/api/2/search?jql=project%3DSHIPIT+AND+fixVersion%3D1.0.0++AND+status+in+%28resolved%2Cclosed%2Cdone%29"
     val applicationLinkRequest = mock[ApplicationLinkRequest]
     applicationLinkRequestFactory.createRequest(MethodType.GET, url) returns applicationLinkRequest
     val responseHandler = mock[ReturningResponseHandler[Response, String]]

@@ -1,8 +1,6 @@
 package ch.mibex.bamboo.shipit.task
 
-import java.io.File
-import java.util.concurrent.Callable
-
+import ch.mibex.bamboo.shipit.Utils._
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.{MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.{Constants, Logging, Utils}
@@ -12,7 +10,6 @@ import com.atlassian.bamboo.task.{CommonTaskContext, TaskDefinition, TaskExcepti
 import com.atlassian.bamboo.user.BambooUserManager
 import com.atlassian.bamboo.v2.build.CommonContext
 import com.atlassian.bamboo.v2.build.trigger.ManualBuildTriggerReason
-import com.atlassian.fugue
 import com.atlassian.marketplace.client.model.{Addon, AddonVersion}
 import com.atlassian.plugin.marketing.bean.{PluginMarketing, ProductCompatibility}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
@@ -21,15 +18,17 @@ import com.atlassian.sal.api.message.I18nResolver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
-import scala.collection.JavaConverters._
+import java.io.File
+import java.util.concurrent.Callable
+import scala.jdk.CollectionConverters._
 
 @Component
-class NewPluginVersionDataCollector @Autowired()(
+class NewPluginVersionDataCollector @Autowired() (
     @ComponentImport jiraApplinksService: JiraApplinksService,
     @ComponentImport impersonationService: ImpersonationService,
     @ComponentImport bambooUserManager: BambooUserManager,
-    @ComponentImport i18nResolver: I18nResolver)
-    extends Logging {
+    @ComponentImport i18nResolver: I18nResolver
+) extends Logging {
 
   case class SummaryAndReleaseNotes(summary: String, releaseNotes: String)
 
@@ -45,7 +44,8 @@ class NewPluginVersionDataCollector @Autowired()(
       artifact: File,
       pluginInfo: PluginArtifactDetails,
       plugin: Addon,
-      pluginMarketing: Option[PluginMarketing])(implicit mpac: MpacFacade): NewPluginVersionDetails = {
+      pluginMarketing: Option[PluginMarketing]
+  )(implicit mpac: MpacFacade): NewPluginVersionDetails = {
     val projectInfos = getParamsForJiraAccess(taskContext, pluginInfo, context)
     val releaseSummaryAndDescription = collectReleaseNotes(projectInfos, context, taskContext)
     val isPublicVersion = Option(taskContext.getConfigurationMap.get(IsPublicVersionField))
@@ -102,7 +102,8 @@ class NewPluginVersionDataCollector @Autowired()(
   }
 
   private def findBaseVersionForNewSubmission(pluginKey: String, commonContext: CommonContext)(
-      implicit mpac: MpacFacade) = {
+      implicit mpac: MpacFacade
+  ) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     val result = Option(vars.get(BambooVariables.BambooPluginBaseVersionVariableKey)) match {
       case Some(baseVersion) if Option(baseVersion.getValue).isDefined && baseVersion.getValue.nonEmpty =>
@@ -125,7 +126,8 @@ class NewPluginVersionDataCollector @Autowired()(
       compatibilityOpt: Option[ProductCompatibility],
       baseVersion: AddonVersion,
       isMin: Boolean,
-      isDc: Boolean)(implicit mpac: MpacFacade): Option[Int] = {
+      isDc: Boolean
+  )(implicit mpac: MpacFacade): Option[Int] = {
     compatibilityOpt match {
       case Some(c) => // if we have <compatibility> section in atlassian-plugin-marketing.xml, take it from there
         val version = if (isMin) c.getMin else c.getMax
@@ -134,7 +136,8 @@ class NewPluginVersionDataCollector @Autowired()(
           case Right(Some(buildNumber)) => Option(buildNumber)
           case _ =>
             throw new TaskException(
-              i18nResolver.getText("shipit.task.no.build.number.found", c.getProduct.name(), version))
+              i18nResolver.getText("shipit.task.no.build.number.found", c.getProduct.name(), version)
+            )
         }
       case None => // otherwise, let's take compatibility from the last app version
         val lastCompat = for {
@@ -143,7 +146,7 @@ class NewPluginVersionDataCollector @Autowired()(
         lastCompat match {
           case Some(lc) =>
             val compatVersion: Option[Integer] = if (isDc) {
-              if (isMin) lc.getDataCenterMinBuild else lc.getDataCenterMaxBuild
+              if (isMin) asScalaOption(lc.getDataCenterMinBuild) else lc.getDataCenterMaxBuild
             } else {
               if (isMin) lc.getServerMinBuild else lc.getServerMaxBuild
             }
@@ -158,7 +161,8 @@ class NewPluginVersionDataCollector @Autowired()(
   private def collectReleaseNotes(
       projectInfos: JiraProjectData,
       commonContext: CommonContext,
-      taskContext: CommonTaskContext): SummaryAndReleaseNotes = {
+      taskContext: CommonTaskContext
+  ): SummaryAndReleaseNotes = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
 
     val summaryAndReleaseNotes = for {
@@ -189,7 +193,8 @@ class NewPluginVersionDataCollector @Autowired()(
               .getOrElse(
                 throw new TaskException(
                   i18nResolver
-                    .getText("shipit.task.no.version.summary.found", projectInfos.projectKey, projectInfos.version))
+                    .getText("shipit.task.no.version.summary.found", projectInfos.projectKey, projectInfos.version)
+                )
               )
             val releaseNotes = jiraFacade.collectReleaseNotes(
               projectKey = projectInfos.projectKey,
@@ -216,7 +221,8 @@ class NewPluginVersionDataCollector @Autowired()(
       deduceBuildNr: Boolean,
       isForDc: Boolean,
       pluginInfo: PluginArtifactDetails,
-      bambooBuildNrVariableKey: String) = {
+      bambooBuildNrVariableKey: String
+  ) = {
     val vars = commonContext.getVariableContext.getEffectiveVariables
     Option(vars.get(bambooBuildNrVariableKey)) match {
       case Some(buildNr) if Option(buildNr.getValue).isDefined && buildNr.getValue.trim.nonEmpty =>
@@ -233,7 +239,8 @@ class NewPluginVersionDataCollector @Autowired()(
   private def getParamsForJiraAccess(
       taskContext: CommonTaskContext,
       pluginInfo: PluginArtifactDetails,
-      commonContext: CommonContext) = {
+      commonContext: CommonContext
+  ) = {
     val taskDefinition = getTaskDefinitionFromBuild(commonContext).getOrElse(
       throw new TaskException(i18nResolver.getText("shipit.task.notaskdef"))
     )
@@ -288,9 +295,5 @@ class NewPluginVersionDataCollector @Autowired()(
       _.getValue
     }
   }
-
-  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
-    if (upmOpt.isDefined) Some(upmOpt.get)
-    else None
 
 }

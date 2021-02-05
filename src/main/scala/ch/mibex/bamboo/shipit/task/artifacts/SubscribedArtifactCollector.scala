@@ -13,15 +13,16 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
+
 @Component
-class SubscribedArtifactCollector @Autowired()(@ComponentImport i18nResolver: I18nResolver) {
+class SubscribedArtifactCollector @Autowired() (@ComponentImport i18nResolver: I18nResolver) {
 
   def buildArtifactUiList(job: ImmutableJob): Seq[WwSelectOption] =
-    job.getArtifactSubscriptions.asScala map { as =>
+    (job.getArtifactSubscriptions.asScala map { as =>
       val selectedValue = ArtifactSubscriptionId(as.getArtifactDefinition)
       val groupName = i18nResolver.getText("shipit.task.config.subscribed.artifacts")
       new WwSelectOption(as.getName, groupName, selectedValue.toString)
-    }
+    }).toSeq
 
   def findArtifactInSubscriptions(taskContext: CommonTaskContext, artifactId: Long): Option[File] = {
     val rootDir = taskContext.getWorkingDirectory
