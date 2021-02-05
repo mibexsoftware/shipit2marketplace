@@ -1,8 +1,7 @@
 package ch.mibex.bamboo.shipit.task
 
-import java.io.{File, FileInputStream}
-
 import ch.mibex.bamboo.shipit.Constants.BambooVariables.BambooDataCenterBuildNrVariableKey
+import ch.mibex.bamboo.shipit.Utils.asScalaOption
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacUploadError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacError, MpacFacade, NewPluginVersionDetails}
 import ch.mibex.bamboo.shipit.settings.AdminSettingsDao
@@ -15,7 +14,6 @@ import ch.mibex.bamboo.shipit.task.artifacts.{
 import ch.mibex.bamboo.shipit.{Constants, Logging}
 import com.atlassian.bamboo.build.logger.BuildLogger
 import com.atlassian.bamboo.deployments.execution.{DeploymentTaskContext, DeploymentTaskType}
-import com.atlassian.bamboo.deployments.projects.service.DeploymentProjectService
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.v2.build.CommonContext
@@ -26,13 +24,13 @@ import com.atlassian.plugin.tool.PluginInfoTool
 import com.atlassian.sal.api.message.I18nResolver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
-import scala.collection.JavaConverters._
+
+import java.io.{File, FileInputStream}
 
 case class JiraProjectData(projectKey: String, version: String, triggerUserName: String)
 @Component
 class ShipItTask @Autowired()(
     @ComponentImport encryptionService: EncryptionService,
-    @ComponentImport deploymentProjectService: DeploymentProjectService,
     @ComponentImport i18nResolver: I18nResolver,
     mpacCredentialsDao: AdminSettingsDao,
     buildArtifactCollector: DownloaderArtifactCollector,
@@ -160,7 +158,9 @@ class ShipItTask @Autowired()(
         val successMsg = i18nResolver.getText(
           "shipit.task.successfully.shipped",
           newVersion.getName.getOrElse("?"),
-          newPluginVersion.plugin.getName)
+          newPluginVersion.plugin.getName,
+          asScalaOption(newVersion.getArtifactInfo).map(_.getBinaryUri.toString).getOrElse("?")
+        )
         buildLogger.addBuildLogEntry(successMsg)
         storeResultsLinkInfo(taskContext, newVersion)
         taskBuilder.success.build
@@ -214,14 +214,17 @@ class ShipItTask @Autowired()(
     val artifactToDeployId = Option(taskContext.getConfigurationMap.get(ArtifactToDeployKeyField)).getOrElse(
       throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.setting.notconfigured"))
     )
-    (artifactToDeployId match {
-      case ArtifactSubscriptionId(artifactId, artifactName) =>
+    val artifact = (artifactToDeployId match {
+      case ArtifactSubscriptionId(artifactId, _) =>
         subscribedArtifactCollector.findArtifactInSubscriptions(taskContext, artifactId)
-      case ArtifactDownloaderTaskId(artifactId, artifactName, downloaderTaskId, transferId) =>
+      case ArtifactDownloaderTaskId(artifactId, _, downloaderTaskId, transferId) =>
         buildArtifactCollector.findArtifactInDownloaderTask(taskContext, artifactId, downloaderTaskId, transferId)
       case _ =>
         throw new TaskException(i18nResolver.getText("shipit.task.artifact.deploy.invalidformat", artifactToDeployId))
     }).getOrElse(throw new TaskException("shipit.task.artifact.deploy.setting.notfound"))
+    taskContext.getBuildLogger.addBuildLogEntry(
+      s"ShipIt to Marketplace task: will use ${artifact.getAbsolutePath} as artifact")
+    artifact
   }
 
 }

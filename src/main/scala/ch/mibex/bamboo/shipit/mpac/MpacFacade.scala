@@ -1,9 +1,7 @@
 package ch.mibex.bamboo.shipit.mpac
 
-import java.io.File
-import java.net.URL
-
 import ch.mibex.bamboo.shipit.Logging
+import ch.mibex.bamboo.shipit.Utils._
 import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConnectionError, MpacUploadError}
 import com.atlassian.fugue
 import com.atlassian.marketplace.client.api._
@@ -14,9 +12,10 @@ import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 import com.atlassian.plugin.marketing.bean.ProductEnum
 
+import java.io.File
+import java.net.URL
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
 case class NewPluginVersionDetails(
@@ -250,15 +249,4 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         Some(MpacConnectionError())
     }
   }
-
-  implicit def asFugueOption[T](value: T): fugue.Option[T] = fugue.Option.some(value)
-
-  implicit def asFugueOption[T](scalaOpt: Option[T]): fugue.Option[T] =
-    if (scalaOpt.isDefined) fugue.Option.some(scalaOpt.get)
-    else fugue.Option.none()
-
-  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
-    if (upmOpt.isDefined) Some(upmOpt.get)
-    else None
-
 }

@@ -2,8 +2,8 @@ package ch.mibex.bamboo.shipit
 
 import java.io.File
 import java.util.concurrent.Callable
-
 import com.atlassian.bamboo.utils.FileVisitor
+import com.atlassian.fugue
 import com.atlassian.plugin.Application
 import com.atlassian.plugin.parsers.XmlDescriptorParser
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
@@ -97,4 +97,13 @@ object Utils {
     override def call() = f
   }
 
+  implicit def asFugueOption[T](value: T): fugue.Option[T] = fugue.Option.some(value)
+
+  implicit def asFugueOption[T](scalaOpt: Option[T]): fugue.Option[T] =
+    if (scalaOpt.isDefined) fugue.Option.some(scalaOpt.get)
+    else fugue.Option.none()
+
+  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
+    if (upmOpt.isDefined) Some(upmOpt.get)
+    else None
 }
