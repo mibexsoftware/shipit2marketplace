@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component
 
 import java.io.File
 import java.util.concurrent.Callable
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 @Component
 class NewPluginVersionDataCollector @Autowired() (

@@ -11,7 +11,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 import java.util.Optional
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 object Utils {
 
@@ -67,8 +67,9 @@ object Utils {
       }
     }
     namesVisitor.visitFilesThatMatch(filePattern)
+    val lastModified = Ordering.by((_: File).lastModified)
     // if we don't take the most recent one, we might upload old plug-in versions
-    rawArtifacts.maxByOption(_.lastModified())
+    rawArtifacts.reduceOption(lastModified.max)
   }
 
   def toBuildNumber(versionString: String, shortVersion: Boolean = false): Int = {

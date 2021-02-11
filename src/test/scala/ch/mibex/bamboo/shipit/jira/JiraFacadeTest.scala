@@ -21,9 +21,8 @@ class JiraFacadeTest extends Specification with Mockito {
         JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
       val bug2 = JiraIssue(key = "TEST-4", summary = "Database error with Oracle 9.1", issueType = "Bug")
       JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must_==
-        "Improvements:<p>* Improved colors in the UI dialogs<p>" +
-          "<p>Bug fixes:<p>* Fixed authentication error<p>* Database error with Oracle 9.1<p>" +
-          "<p>New features:<p>* New help system"
+        "Bug fixes:<p>* Fixed authentication error<p>* Database error with Oracle 9.1<p>" +
+          "<p>New features:<p>* New help system<p><p>Improvements:<p>* Improved colors in the UI dialogs"
     }
 
   }

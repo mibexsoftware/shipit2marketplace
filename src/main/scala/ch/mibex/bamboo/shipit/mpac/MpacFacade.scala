@@ -15,7 +15,7 @@ import io.atlassian.fugue.Option.some
 
 import java.io.File
 import java.net.URL
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 

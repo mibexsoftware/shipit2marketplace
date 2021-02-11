@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component
 import java.lang.{Boolean => JBoolean}
 import java.util.concurrent.Callable
 import java.util.{Map => JMap}
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 object ShipItTaskConfigurator {
   final val IsPublicVersionField = "publicVersion"
