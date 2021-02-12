@@ -85,7 +85,7 @@ object MpacFacade {
     val c = new Credentials(credentials.vendorUserName, credentials.vendorPassword)
     val httpConfig = HttpConfiguration
       .builder()
-      .readTimeoutMillis(2 * DEFAULT_READ_TIMEOUT_MILLIS) // Increase read timeout to work around slow marketplace responses.
+      .readTimeoutMillis(6 * DEFAULT_READ_TIMEOUT_MILLIS) // Increase read timeout to work around slow marketplace responses.
       .credentials(some(c))
       .build()
     val client = new DefaultMarketplaceClient(DefaultMarketplaceClient.DEFAULT_SERVER_URI, httpConfig)
