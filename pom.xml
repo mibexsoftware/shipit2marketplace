@@ -16,7 +16,7 @@
         <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>6.0.0</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>8.0.1</amps.version>
+        <amps.version>8.2.2</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <!-- newer Scala versions than 2.11 caused strange OSGi dependency issues, see SHIPIT-47 -->
         <scala.version>2.11</scala.version>
@@ -24,6 +24,7 @@
         <scalafmt.version>1.5.1</scalafmt.version>
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
+        <httpcomponent.version>4.5.13</httpcomponent.version>
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
     </properties>
@@ -94,7 +95,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
+                <version>3.8.1</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -102,7 +103,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.2.0</version>
                 <configuration>
                     <archive>
                         <addMavenDescriptor>false</addMavenDescriptor>
@@ -231,6 +232,9 @@
                     <skipTestScope>true</skipTestScope>
                     <failBuildOnCVSS>4</failBuildOnCVSS>
                     <nodeAnalyzerEnabled>false</nodeAnalyzerEnabled>
+                    <suppressionFiles>
+                        <suppressionFile>suppressions.xml</suppressionFile>
+                    </suppressionFiles>
                 </configuration>
                 <executions>
                     <execution>
@@ -275,12 +279,12 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.3.6</version>
+            <version>${httpcomponent.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient-cache</artifactId>
-            <version>4.3.6</version>
+            <version>${httpcomponent.version}</version>
         </dependency>
         <dependency>
             <groupId>com.atlassian.activeobjects</groupId>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions
+        xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <suppress>
+        <notes><![CDATA[
+      Suppress vulnerability in scala: 2.11.x compilation daemon.
+      ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org.scala-lang/scala-.*@.*$</packageUrl>
+        <cve>CVE-2017-15288</cve>
+    </suppress>
+</suppressions>
