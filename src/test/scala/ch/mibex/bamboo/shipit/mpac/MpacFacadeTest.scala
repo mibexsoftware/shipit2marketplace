@@ -10,7 +10,7 @@ import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.Scope
 
-
+import java.util.Optional
 @RunWith(classOf[JUnitRunner])
 class MpacFacadeTest extends Specification with Mockito {
 
@@ -25,7 +25,7 @@ class MpacFacadeTest extends Specification with Mockito {
   class PluginNotFoundContext extends Scope {
     val mpac = mock[MarketplaceClient](withSettings.defaultAnswer(RETURNS_DEEP_STUBS.get))
     // val plugin = mock[Plugin] // we cannot mock Plugin as it is final
-    mpac.addons().getByKey(anyString, any[AddonQuery]) returns com.atlassian.fugue.Option.none()
+    mpac.addons().safeGetByKey(anyString, any[AddonQuery]) returns Optional.empty()
     val client = new MpacFacade(mpac)
   }
 

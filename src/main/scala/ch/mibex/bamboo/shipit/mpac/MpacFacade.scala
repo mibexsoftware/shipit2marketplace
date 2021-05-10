@@ -1,22 +1,22 @@
 package ch.mibex.bamboo.shipit.mpac
 
-import java.io.File
-import java.net.URL
-
 import ch.mibex.bamboo.shipit.Logging
+import ch.mibex.bamboo.shipit.Utils.JavaOptionals.toRichOptional
+import ch.mibex.bamboo.shipit.Utils._
 import ch.mibex.bamboo.shipit.mpac.MpacError.{MpacAuthenticationError, MpacConnectionError, MpacUploadError}
-import com.atlassian.fugue
 import com.atlassian.marketplace.client.api._
 import com.atlassian.marketplace.client.http.HttpConfiguration
-import com.atlassian.marketplace.client.http.HttpConfiguration.Credentials
+import com.atlassian.marketplace.client.http.HttpConfiguration.{Credentials, DEFAULT_READ_TIMEOUT_MILLIS}
 import com.atlassian.marketplace.client.impl.DefaultMarketplaceClient
 import com.atlassian.marketplace.client.model._
 import com.atlassian.marketplace.client.{MarketplaceClient, MpacException}
 import com.atlassian.plugin.marketing.bean.ProductEnum
+import io.atlassian.fugue.Option.some
 
+import java.io.File
+import java.net.URL
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-
 case class MpacCredentials(vendorUserName: String, vendorPassword: String)
 
 case class NewPluginVersionDetails(
@@ -36,7 +36,8 @@ case class NewPluginVersionDetails(
     binary: File,
     isPublicVersion: Boolean,
     releaseSummary: String,
-    releaseNotes: String) {
+    releaseNotes: String
+) {
 
   override def toString: String =
     s"""plugin=${plugin.getKey},
@@ -84,7 +85,8 @@ object MpacFacade {
     val c = new Credentials(credentials.vendorUserName, credentials.vendorPassword)
     val httpConfig = HttpConfiguration
       .builder()
-      .credentials(fugue.Option.some(c))
+      .readTimeoutMillis(6 * DEFAULT_READ_TIMEOUT_MILLIS) // Increase read timeout to work around slow marketplace responses.
+      .credentials(some(c))
       .build()
     val client = new DefaultMarketplaceClient(DefaultMarketplaceClient.DEFAULT_SERVER_URI, httpConfig)
 
@@ -106,7 +108,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         case Some(v) => AddonVersionSpecifier.versionName(v)
         case None => AddonVersionSpecifier.latest()
       }
-      Right(client.addons().getVersion(pluginKey, specifier, criteria))
+      Right(client.addons().safeGetVersion(pluginKey, specifier, criteria).toOption)
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
@@ -128,7 +130,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         case _ => ApplicationVersionSpecifier.latest()
       }
       val applKey = ApplicationKey.valueOf(product.name())
-      val version = client.applications().getVersion(applKey, versionSpec).asScala.headOption
+      val version = client.applications().safeGetVersion(applKey, versionSpec).toOption
       Right(version.map(_.getBuildNumber))
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
@@ -143,7 +145,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
   def findPlugin(pluginKey: String): Either[MpacError, Option[Addon]] = {
     try {
       val criteria = AddonQuery.any()
-      Right(client.addons().getByKey(pluginKey, criteria))
+      Right(client.addons().safeGetByKey(pluginKey, criteria).toOption)
     } catch {
       case e: MpacException.ServerError if e.getStatus == 401 || e.getStatus == 403 =>
         log.error(s"SHIPIT2MARKETPLACE: failed to find plug-in with key $pluginKey", e)
@@ -176,7 +178,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
     val artifactId = client.assets().uploadAddonArtifact(newVersionDetails.binary)
     var addonVersion = ModelBuilders
       .addonVersion(newVersionDetails.baseVersion) // copy everything from the base version
-      .releaseSummary(newVersionDetails.releaseSummary)
+      .releaseSummary(Option(newVersionDetails.releaseSummary))
       .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
       .releaseDate(new org.joda.time.LocalDate())
       .buildNumber(newVersionDetails.serverBuildNumber)
@@ -193,13 +195,15 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         newVersionDetails.minServerBuildNumber,
         newVersionDetails.maxServerBuildNumber,
         newVersionDetails.minDataCenterBuildNumber,
-        newVersionDetails.maxDataCenterBuildNumber) match {
+        newVersionDetails.maxDataCenterBuildNumber
+      ) match {
         case (
             Some(baseProduct),
             Some(minServerBuildNumber),
             Some(maxServerBuildNumber),
             Some(minDataCenterBuildNumber),
-            Some(maxDataCenterBuildNumber)) =>
+            Some(maxDataCenterBuildNumber)
+            ) =>
           addonVersion = addonVersion
             .compatibilities(
               List(
@@ -210,7 +214,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
                   minDataCenterBuildNumber, // DC version min compatibility
                   maxDataCenterBuildNumber
                 ) // DC version max compatibility
-              ).asJava)
+              ).asJava
+            )
             .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
         case _ =>
           // without the product version compatibility for both server and DC, we get the following error:
@@ -227,7 +232,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
                 ApplicationKey.valueOf(baseProduct),
                 minServerBuildNumber, // Server version min compatibility
                 maxServerBuildNumber // Server version max compatibility
-              )).asJava
+              )
+            ).asJava
           )
         case _ =>
       }
@@ -249,15 +255,4 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
         Some(MpacConnectionError())
     }
   }
-
-  implicit def asFugueOption[T](value: T): fugue.Option[T] = fugue.Option.some(value)
-
-  implicit def asFugueOption[T](scalaOpt: Option[T]): fugue.Option[T] =
-    if (scalaOpt.isDefined) fugue.Option.some(scalaOpt.get)
-    else fugue.Option.none()
-
-  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
-    if (upmOpt.isDefined) Some(upmOpt.get)
-    else None
-
 }

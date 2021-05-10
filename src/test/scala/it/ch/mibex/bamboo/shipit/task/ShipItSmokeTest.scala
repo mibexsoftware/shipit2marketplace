@@ -20,13 +20,13 @@ import org.specs2.runner.JUnitRunner
 // see https://ecosystem.atlassian.net/wiki/display/SELENIUM/Building+Page+Objects+with+Atlassian+Selenium
 class AdminSettingsComponent extends AbstractBambooAdminPage {
 
-  @ElementBy(name =  "save")
+  @ElementBy(name = "save")
   var submit: PageElement = _
 
-  @ElementBy(name =  "vendorName")
+  @ElementBy(name = "vendorName")
   var vendorNameText: TextElement = _
 
-  @ElementBy(name =  "vendorPassword")
+  @ElementBy(name = "vendorPassword")
   var vendorPasswordText: TextElement = _
 
   @ElementBy(id = "updateShip2MpacConfiguration")
@@ -37,7 +37,7 @@ class AdminSettingsComponent extends AbstractBambooAdminPage {
 
   override def indicator(): PageElement = configPanel
 
-  override def getUrl: String =  "/admin/shipit2mpac/viewShip2MpacConfiguration.action"
+  override def getUrl: String = "/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
   def submitAndExpectValidationError() = {
     submit.click()
@@ -53,7 +53,7 @@ class AdminSettingsComponent extends AbstractBambooAdminPage {
 }
 
 class ShipItTaskConfigComponent extends TaskComponent {
-  @ElementBy(id =  ShipItTaskConfigurator.IsPublicVersionField)
+  @ElementBy(id = ShipItTaskConfigurator.IsPublicVersionField)
   var isPublicVersionField: WebElement = null
 
   override def updateTaskDetails(map: util.Map[String, String]): Unit = {
@@ -63,7 +63,7 @@ class ShipItTaskConfigComponent extends TaskComponent {
 }
 
 @RunWith(classOf[JUnitRunner])
-class ShiptItSmokeTest extends Specification   {
+class ShiptItSmokeTest extends Specification {
 
   "when plug-in is installed" should {
 

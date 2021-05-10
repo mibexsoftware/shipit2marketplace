@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.mibex.bamboo</groupId>
     <artifactId>shipit2mpac</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <organization>
         <name>Mibex Software GmbH</name>
         <url>https://www.mibexsoftware.com</url>
@@ -16,17 +16,17 @@
         <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>6.0.0</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>8.0.1</amps.version>
+        <amps.version>8.2.2</amps.version>
         <xvfb.enable>true</xvfb.enable>
+        <!-- newer Scala versions than 2.11 caused strange OSGi dependency issues, see SHIPIT-47 -->
         <scala.version>2.11</scala.version>
         <scala.full.version>${scala.version}.4</scala.full.version>
         <scalafmt.version>1.5.1</scalafmt.version>
-        <!-- mpac forces us to use Scala 2.11 -->
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
+        <httpcomponent.version>4.5.13</httpcomponent.version>
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
-
     </properties>
     <scm>
         <connection>scm:git:ssh://git@github.com:mibexsoftware/shipit2marketplace.git</connection>
@@ -95,7 +95,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
+                <version>3.8.1</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -103,7 +103,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.2.0</version>
                 <configuration>
                     <archive>
                         <addMavenDescriptor>false</addMavenDescriptor>
@@ -159,7 +159,10 @@
             <plugin>
                 <groupId>org.antipathy</groupId>
                 <artifactId>mvn-scalafmt_${scala.version}</artifactId>
-                <version>0.10_${scalafmt.version}</version>
+                <version>1.0.3</version>
+                <configuration>
+                    <configLocation>${project.basedir}/.scalafmt.conf</configLocation>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>validate</phase>
@@ -219,6 +222,28 @@
                     <verbose>false</verbose>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>6.1.6</version>
+                <configuration>
+                    <skipProvidedScope>true</skipProvidedScope>
+                    <skipRuntimeScope>false</skipRuntimeScope>
+                    <skipTestScope>true</skipTestScope>
+                    <failBuildOnCVSS>4</failBuildOnCVSS>
+                    <nodeAnalyzerEnabled>false</nodeAnalyzerEnabled>
+                    <suppressionFiles>
+                        <suppressionFile>suppressions.xml</suppressionFile>
+                    </suppressionFiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <!--<finalName>${project.artifactId}-${project.version}-${timestamp}</finalName>-->
     </build>
@@ -243,7 +268,13 @@
         <dependency>
             <groupId>com.atlassian.marketplace</groupId>
             <artifactId>marketplace-client-java</artifactId>
-            <version>2.1.6</version>
+            <version>3.1.3</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>commons-lang3</artifactId>
+                    <groupId>org.apache.commons</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.atlassian.upm</groupId>
@@ -254,12 +285,8 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.3.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient-cache</artifactId>
-            <version>4.3.6</version>
+            <version>${httpcomponent.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.atlassian.activeobjects</groupId>
@@ -286,7 +313,7 @@
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
-            <artifactId>spray-json_2.11</artifactId>
+            <artifactId>spray-json_${scala.version}</artifactId>
             <version>1.3.5</version>
         </dependency>
         <dependency>
@@ -316,7 +343,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.10</version>
+            <version>4.11</version>
             <scope>test</scope>
         </dependency>
         <!-- WIRED TEST RUNNER DEPENDENCIES -->
@@ -365,20 +392,14 @@
         </dependency>
         <dependency>
             <groupId>org.specs2</groupId>
-            <artifactId>specs2_2.11</artifactId>
+            <artifactId>specs2_${scala.version}</artifactId>
             <version>2.3.11</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalactic</groupId>
-            <artifactId>scalactic_2.11</artifactId>
+            <artifactId>scalactic_${scala.version}</artifactId>
             <version>2.2.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.11</artifactId>
-            <version>2.2.6</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>javax.ws.rs</groupId>
@@ -386,10 +407,11 @@
             <version>1.1.1</version>
             <scope>provided</scope>
         </dependency>
+        <!-- Is necessary as it is a dependency by MPAC client 3.x, and is not provided by Bamboo -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.2.2-atlassian-1</version>
+            <version>2.8.2</version>
         </dependency>
     </dependencies>
 </project>

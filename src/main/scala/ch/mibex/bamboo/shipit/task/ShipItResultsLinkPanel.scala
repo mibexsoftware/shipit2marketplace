@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
 
 import scala.collection.JavaConverters._
 @Component
-class ShipItResultsLinkPanel @Autowired()(@ComponentImport pluginAccessor: PluginAccessor)
+class ShipItResultsLinkPanel @Autowired() (@ComponentImport pluginAccessor: PluginAccessor)
     extends AbstractWebPanel(pluginAccessor)
     with Logging {
 

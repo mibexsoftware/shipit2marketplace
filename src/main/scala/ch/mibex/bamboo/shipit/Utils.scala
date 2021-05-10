@@ -2,14 +2,15 @@ package ch.mibex.bamboo.shipit
 
 import java.io.File
 import java.util.concurrent.Callable
-
 import com.atlassian.bamboo.utils.FileVisitor
+import io.atlassian.fugue
 import com.atlassian.plugin.Application
 import com.atlassian.plugin.parsers.XmlDescriptorParser
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
+import java.util.Optional
 import scala.collection.JavaConverters._
 
 object Utils {
@@ -29,7 +30,7 @@ object Utils {
     }
 
     def read(value: JsValue) = value match {
-      case JsNumber(n) => n.intValue()
+      case JsNumber(n) => n.intValue
       case JsString(s) => s
       case a: JsArray => listFormat[Any].read(value)
       case o: JsObject => mapFormat[String, Any].read(value)
@@ -88,6 +89,7 @@ object Utils {
 
     (majorStr + minorStr + incStr).toInt
   }
+
   // Use like this:
   // import Utils.functionToUncheckedOp
   // securityService.withPermission(Permission.REPO_READ, "getting coverage").call({
@@ -97,4 +99,31 @@ object Utils {
     override def call() = f
   }
 
+  implicit def asFugueOption[T](value: T): fugue.Option[T] = fugue.Option.some(value)
+
+  implicit def asFugueOption[T](scalaOpt: Option[T]): fugue.Option[T] =
+    if (scalaOpt.isDefined) fugue.Option.some(scalaOpt.get)
+    else fugue.Option.none()
+
+  implicit def asScalaOption[T](upmOpt: fugue.Option[T]): Option[T] =
+    if (upmOpt.isDefined) Some(upmOpt.get)
+    else None
+
+  /**
+    * Conversions between Scala Option and Java 8 Optional.
+    */
+  object JavaOptionals {
+    implicit def toRichOption[T](opt: Option[T]): RichOption[T] = new RichOption[T](opt)
+    implicit def toRichOptional[T](optional: Optional[T]): RichOptional[T] = new RichOptional[T](optional)
+  }
+
+  class RichOption[T](opt: Option[T]) {
+
+    def toOptional: Optional[T] = Optional.ofNullable(opt.getOrElse(null).asInstanceOf[T])
+  }
+
+  class RichOptional[T](opt: Optional[T]) {
+
+    def toOption: Option[T] = if (opt.isPresent) Some(opt.get()) else None
+  }
 }

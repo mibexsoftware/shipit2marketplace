@@ -31,7 +31,8 @@ case class ArtifactDownloaderTaskId(
     artifactIdParam: Long,
     artifactNameParam: String,
     downloaderTaskId: Long,
-    transferId: Int) {
+    transferId: Int
+) {
   override def toString = s"$artifactIdParam:$artifactNameParam:$downloaderTaskId:$transferId"
 }
 

@@ -22,16 +22,18 @@ import scala.collection.JavaConverters._
 // - sharing artifacts from a build plan to a deployment environment
 // see https://confluence.atlassian.com/display/BAMBOO058/Sharing+artifacts
 @Component
-class DownloaderArtifactCollector @Autowired()(
+class DownloaderArtifactCollector @Autowired() (
     @ComponentImport artifactDefinitionManager: ArtifactDefinitionManager,
     @ComponentImport i18nResolver: I18nResolver,
-    @ComponentImport variableContext: CustomVariableContext) {
+    @ComponentImport variableContext: CustomVariableContext
+) {
 
   def findArtifactInDownloaderTask(
       taskContext: CommonTaskContext,
       artifactId: Long,
       downloaderTaskId: Long,
-      transferId: Int): Option[File] =
+      transferId: Int
+  ): Option[File] =
     taskContext.getCommonContext.getRuntimeTaskDefinitions.asScala
       .find(t => t.getId == downloaderTaskId)
       .flatMap(downloaderTask => {

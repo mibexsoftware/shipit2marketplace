@@ -14,7 +14,6 @@ import org.mockito.Mockito.mock
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 
-
 object AdminSettingsDaoTest {
   class TestDatabaseUpdater extends DatabaseUpdater {
     override def update(entityManager: EntityManager): Unit = {
@@ -22,8 +21,6 @@ object AdminSettingsDaoTest {
     }
   }
 }
-
-
 @RunWith(classOf[ActiveObjectsJUnitRunner])
 @Data(classOf[AdminSettingsDaoTest.TestDatabaseUpdater])
 @Jdbc(classOf[Hsql])

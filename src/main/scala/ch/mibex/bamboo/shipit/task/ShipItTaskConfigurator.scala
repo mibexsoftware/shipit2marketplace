@@ -1,9 +1,5 @@
 package ch.mibex.bamboo.shipit.task
 
-import java.lang.{Boolean => JBoolean}
-import java.util.concurrent.Callable
-import java.util.{Map => JMap}
-
 import ch.mibex.bamboo.shipit.jira.JiraFacade
 import ch.mibex.bamboo.shipit.mpac.MpacError.MpacAuthenticationError
 import ch.mibex.bamboo.shipit.mpac.{MpacCredentials, MpacFacade}
@@ -15,20 +11,21 @@ import com.atlassian.bamboo.applinks.{ImpersonationService, JiraApplinksService}
 import com.atlassian.bamboo.collections.ActionParametersMap
 import com.atlassian.bamboo.configuration.AdministrationConfigurationAccessor
 import com.atlassian.bamboo.deployments.DeploymentTaskContextHelper
-import com.atlassian.bamboo.plan.PlanManager
 import com.atlassian.bamboo.plan.cache.ImmutableJob
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.bamboo.task._
 import com.atlassian.bamboo.user.{BambooAuthenticationContext, BambooUserManager}
 import com.atlassian.bamboo.util.Narrow
 import com.atlassian.bamboo.utils.error.ErrorCollection
-import com.atlassian.bamboo.variable.VariableDefinitionManager
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.sal.api.net.Response
 import com.google.common.collect.Maps
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
+import java.lang.{Boolean => JBoolean}
+import java.util.concurrent.Callable
+import java.util.{Map => JMap}
 import scala.collection.JavaConverters._
 
 object ShipItTaskConfigurator {
@@ -46,19 +43,17 @@ object ShipItTaskConfigurator {
 }
 
 @Component
-class ShipItTaskConfigurator @Autowired()(
+class ShipItTaskConfigurator @Autowired() (
     @ComponentImport encryptionService: EncryptionService,
     @ComponentImport jiraApplinksService: JiraApplinksService,
     @ComponentImport impersonationService: ImpersonationService,
     @ComponentImport configAccessor: AdministrationConfigurationAccessor,
     @ComponentImport bambooUserManager: BambooUserManager,
-    @ComponentImport variableDefinitionManager: VariableDefinitionManager,
-    @ComponentImport planManager: PlanManager,
     @ComponentImport bambooAuthContext: BambooAuthenticationContext,
     mpacCredentialsDao: AdminSettingsDao,
     downloaderArtifactCollector: DownloaderArtifactCollector,
-    subscribedArtifactCollector: SubscribedArtifactCollector)
-    extends AbstractTaskConfigurator
+    subscribedArtifactCollector: SubscribedArtifactCollector
+) extends AbstractTaskConfigurator
     with Logging {
 
   import Constants._
@@ -96,15 +91,16 @@ class ShipItTaskConfigurator @Autowired()(
       case Some(job) =>
         val taskDefinitions = job.getBuildDefinition.getTaskDefinitions
         val subscriptions = subscribedArtifactCollector.buildArtifactUiList(job)
-        subscriptions ++ downloaderArtifactCollector.buildArtifactUiList(taskDefinitions.asScala)
+        subscriptions ++ downloaderArtifactCollector.buildArtifactUiList(taskDefinitions.asScala.toList)
       case None => // it is a deployment project
         val env = DeploymentTaskContextHelper.getEnvironment(taskContext)
-        downloaderArtifactCollector.buildArtifactUiList(env.getTaskDefinitions.asScala)
+        downloaderArtifactCollector.buildArtifactUiList(env.getTaskDefinitions.asScala.toList)
     }
 
   override def generateTaskConfigMap(
       actionParams: ActionParametersMap,
-      taskDefinition: TaskDefinition): JMap[String, String] = {
+      taskDefinition: TaskDefinition
+  ): JMap[String, String] = {
     val config = Maps.newHashMap[String, String]()
     config.put(UserNameField, actionParams.getString(UserNameField))
     config.put(IsJiraReleasePanelModeField, actionParams.getBoolean(IsJiraReleasePanelModeField).toString)
@@ -134,7 +130,7 @@ class ShipItTaskConfigurator @Autowired()(
     context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))
   }
 
-  private def checkMpacCredentials(actionParams: ActionParametersMap, errors: ErrorCollection) {
+  private def checkMpacCredentials(errors: ErrorCollection) {
     def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
     mpacCredentialsDao.find() match {
@@ -163,7 +159,7 @@ class ShipItTaskConfigurator @Autowired()(
       && Option(actionParams.getString(JiraProjectKeyField)).getOrElse("").trim.isEmpty) {
       errors.addError(JiraProjectKeyField, "JIRA project must not be empty when not using JIRA release panel mode.")
     }
-    checkMpacCredentials(actionParams, errors)
+    checkMpacCredentials(errors)
 
     if (isDeploymentPlan && !isUserNameGiven) {
       errors.addError(UserNameField, "A Bamboo user must be chosen if this task is part of a deployment project.")
@@ -186,7 +182,8 @@ class ShipItTaskConfigurator @Autowired()(
   private def checkJiraConnectionWhenUserGiven(
       actionParams: ActionParametersMap,
       applLink: ApplicationLink,
-      errors: ErrorCollection) {
+      errors: ErrorCollection
+  ) {
     Option(actionParams.getString(UserNameField)) match {
       case Some(userName) if userName.trim.nonEmpty => // user can be an empty string when passed from the task
         if (Option(bambooUserManager.getBambooUser(userName)).isEmpty) {
@@ -201,7 +198,8 @@ class ShipItTaskConfigurator @Autowired()(
   private def checkJiraApplicationLink(
       jiraApplicationLink: ApplicationLink,
       userName: String,
-      errors: ErrorCollection) {
+      errors: ErrorCollection
+  ) {
     val jiraApplLinkCheck = impersonationService.runAsUser(
       userName,
       new Callable[Unit] {

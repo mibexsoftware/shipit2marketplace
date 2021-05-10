@@ -67,14 +67,15 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
     val fullJql = s"project=$projectKey AND fixVersion=$projectVersion" + (if (jql.nonEmpty) s" AND $jql" else "")
     val response = doGet(s"rest/api/2/search?jql=${URLEncoder.encode(fullJql, "UTF-8")}")
     val json = Utils.mapFromJson(response)
-    val issues = for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])
-      yield {
-        val key = issue("key").asInstanceOf[String]
-        val fields = issue("fields").asInstanceOf[Map[String, Any]]
-        val summary = fields("summary").asInstanceOf[String]
-        val issueType = fields("issuetype").asInstanceOf[Map[String, Any]]("name").asInstanceOf[String]
-        JiraIssue(key = key, summary = summary, issueType = issueType)
-      }
+    val issues =
+      for (issue <- json("issues").asInstanceOf[Seq[Map[String, Any]]])
+        yield {
+          val key = issue("key").asInstanceOf[String]
+          val fields = issue("fields").asInstanceOf[Map[String, Any]]
+          val summary = fields("summary").asInstanceOf[String]
+          val issueType = fields("issuetype").asInstanceOf[Map[String, Any]]("name").asInstanceOf[String]
+          JiraIssue(key = key, summary = summary, issueType = issueType)
+        }
     toReleaseNotes(issues)
   }
 
