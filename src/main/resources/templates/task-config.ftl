@@ -6,6 +6,8 @@
         [@ww.select labelKey='shipit.task.projectKey' descriptionKey='shipit.task.projectKey.description'
         name='jiraProjectKey' id='jiraProjectKey' listKey='key' listValue='name'
         toggle='true' list=jiraProjects required='true'/]
+        [@ww.textfield labelKey="shipit.task.projectVersionPrefix"  descriptionKey='shipit.task.projectVersionPrefix.description'
+        name="jiraVersionPrefix" /]
     [/@ui.bambooSection]
     [@ww.checkbox labelKey="shipit.task.runOnBranchBuilds" name="runOnBranchBuilds" /]
     [@ww.checkbox labelKey="shipit.task.createDcDeployment" name="createDcDeployment" /]

@@ -23,7 +23,7 @@ import java.util.concurrent.Callable
 import scala.collection.JavaConverters._
 
 @Component
-class NewPluginVersionDataCollector @Autowired() (
+class NewPluginVersionDataCollector @Autowired()(
     @ComponentImport jiraApplinksService: JiraApplinksService,
     @ComponentImport impersonationService: ImpersonationService,
     @ComponentImport bambooUserManager: BambooUserManager,
@@ -265,7 +265,8 @@ class NewPluginVersionDataCollector @Autowired() (
         throw new TaskException(i18nResolver.getText("shipit.task.no.valid.user.found"))
       )
       val projectVersion = pluginInfo.getVersion
-      JiraProjectData(projectKey, projectVersion, user)
+      val jiraVersionPrefix = Option(taskContext.getConfigurationMap.get(JiraVersionPrefixField)).getOrElse("")
+      JiraProjectData(projectKey, jiraVersionPrefix + projectVersion, user)
     }
   }
 

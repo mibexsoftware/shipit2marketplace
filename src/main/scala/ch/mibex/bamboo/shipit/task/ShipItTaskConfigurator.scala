@@ -38,12 +38,13 @@ object ShipItTaskConfigurator {
   final val CreateDcDeploymentField = "createDcDeployment"
   final val IsJiraReleasePanelModeField = "jiraReleasePanelDeploymentOnly"
   final val JiraProjectKeyField = "jiraProjectKey"
+  final val JiraVersionPrefixField = "jiraVersionPrefix"
   final val JiraProjectList = "jiraProjects"
   final val JqlField = "jql"
 }
 
 @Component
-class ShipItTaskConfigurator @Autowired() (
+class ShipItTaskConfigurator @Autowired()(
     @ComponentImport encryptionService: EncryptionService,
     @ComponentImport jiraApplinksService: JiraApplinksService,
     @ComponentImport impersonationService: ImpersonationService,
@@ -82,6 +83,7 @@ class ShipItTaskConfigurator @Autowired() (
     context.put(CreateDcDeploymentField, JBoolean.FALSE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(JiraProjectKeyField, "")
+    context.put(JiraVersionPrefixField, "")
     context.put(JqlField, DefaultJql)
     context.put(JiraProjectList, getJiraProjects.asJava)
   }
@@ -111,6 +113,7 @@ class ShipItTaskConfigurator @Autowired() (
     config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
     config.put(ArtifactToDeployKeyField, actionParams.getString(ArtifactToDeployKeyField))
     config.put(JiraProjectKeyField, actionParams.getString(JiraProjectKeyField))
+    config.put(JiraVersionPrefixField, actionParams.getString(JiraVersionPrefixField))
     config
   }
 
@@ -128,6 +131,8 @@ class ShipItTaskConfigurator @Autowired() (
     context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
     context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsJiraReleasePanelModeField))
     context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))
+    context.put(JiraVersionPrefixField, taskDefinition.getConfiguration.get(JiraVersionPrefixField))
+
   }
 
   private def checkMpacCredentials(errors: ErrorCollection) {

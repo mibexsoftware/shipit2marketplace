@@ -9,3 +9,5 @@ amps-standalone/
 *.iml
 out/
 
+.sdkmanrc
+
