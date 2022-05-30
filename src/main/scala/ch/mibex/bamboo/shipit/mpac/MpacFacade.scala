@@ -183,7 +183,6 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .releaseSummary(Option(newVersionDetails.releaseSummary))
       .releaseNotes(HtmlString.html(newVersionDetails.releaseNotes))
       .releaseDate(new org.joda.time.LocalDate())
-      .buildNumber(newVersionDetails.serverBuildNumber)
       .releasedBy(newVersionDetails.userName)
       .artifact(artifactId)
       .name(newVersionDetails.versionNumber)
@@ -219,6 +218,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
                 )
               ).asJava
             )
+            .buildNumber(newVersionDetails.serverBuildNumber)
             .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
         case _ =>
           // without the product version compatibility for both server and DC, we get the following error:
@@ -255,15 +255,17 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       // if specified in the atlassian-plugin-marketing.xml, also take the server host compatibility
       (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber, newVersionDetails.maxServerBuildNumber) match {
         case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber)) =>
-          addonVersion = addonVersion.compatibilities(
-            List(
-              ModelBuilders.versionCompatibilityForServer(
-                ApplicationKey.valueOf(baseProduct),
-                minServerBuildNumber, // Server version min compatibility
-                maxServerBuildNumber // Server version max compatibility
-              )
-            ).asJava
-          )
+          addonVersion = addonVersion
+            .buildNumber(newVersionDetails.serverBuildNumber)
+            .compatibilities(
+              List(
+                ModelBuilders.versionCompatibilityForServer(
+                  ApplicationKey.valueOf(baseProduct),
+                  minServerBuildNumber, // Server version min compatibility
+                  maxServerBuildNumber // Server version max compatibility
+                )
+              ).asJava
+            )
         case _ =>
       }
     }
