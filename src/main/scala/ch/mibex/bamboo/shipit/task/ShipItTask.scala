@@ -145,7 +145,7 @@ class ShipItTask @Autowired() (
       case Some(dcBuildNrVariable) => Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
-    Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField))
+    Option(taskContext.getConfigurationMap.getAsBoolean(DcDeploymentField))
       .getOrElse(false) || isDcBuildNrConfigured
   }
 

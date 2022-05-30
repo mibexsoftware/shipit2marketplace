@@ -65,7 +65,7 @@ class NewPluginVersionDataCollector @Autowired()(
       case None => false
     }
     val createDcDeploymentToo =
-      Option(taskContext.getConfigurationMap.getAsBoolean(CreateDcDeploymentField)).getOrElse(false)
+      Option(taskContext.getConfigurationMap.getAsBoolean(DcDeploymentField)).getOrElse(false)
     val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
     val baseVersion = findBaseVersionForNewSubmission(plugin.getKey, context)
     NewPluginVersionDetails(
@@ -92,6 +92,7 @@ class NewPluginVersionDataCollector @Autowired()(
       userName = getJiraTriggerUser(context),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
+      createServerVersion = Option(taskContext.getConfigurationMap.getAsBoolean(ServerDeploymentField)).getOrElse(true),
       isDcBuildNrConfigured = isDcBuildNrConfigured,
       createDcVersionToo = createDcDeploymentToo,
       binary = artifact,

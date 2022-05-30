@@ -31,6 +31,7 @@ case class NewPluginVersionDetails(
     versionNumber: String,
     baseProduct: Option[String],
     isDcBuildNrConfigured: Boolean,
+    createServerVersion: Boolean,
     createDcVersionToo: Boolean,
     userName: Option[String],
     binary: File,
@@ -49,6 +50,7 @@ case class NewPluginVersionDetails(
        |baseProduct=${baseProduct.getOrElse("?")},
        |versionNumber=$versionNumber,
        |isDcBuildNrConfigured=$isDcBuildNrConfigured,
+       |createServerVersion=$createServerVersion,
        |createDcVersionToo=$createDcVersionToo,
        |serverBuildNumber=$serverBuildNumber,
        |dataCenterBuildNumber=$dataCenterBuildNumber,
@@ -189,7 +191,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
       .agreement(new URL("http://www.atlassian.com/licensing/marketplace/publisheragreement").toURI) // see AMKT-19266
 
     // for DC, configure both DC and server host compatibility
-    if (newVersionDetails.createDcVersionToo || newVersionDetails.isDcBuildNrConfigured) {
+    val dcVersion = newVersionDetails.createDcVersionToo || newVersionDetails.isDcBuildNrConfigured
+    if (newVersionDetails.createServerVersion && dcVersion) {
       (
         newVersionDetails.baseProduct,
         newVersionDetails.minServerBuildNumber,
@@ -212,8 +215,8 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
                   minServerBuildNumber, // Server version min compatibility
                   maxServerBuildNumber, // Server version max compatibility
                   minDataCenterBuildNumber, // DC version min compatibility
-                  maxDataCenterBuildNumber
-                ) // DC version max compatibility
+                  maxDataCenterBuildNumber // DC version max compatibility
+                )
               ).asJava
             )
             .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
@@ -222,7 +225,33 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
           // compatibilities: Must have at least one item.
           throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
       }
+    } else if (dcVersion) {
+      (
+        newVersionDetails.baseProduct,
+        newVersionDetails.minDataCenterBuildNumber,
+        newVersionDetails.maxDataCenterBuildNumber
+      ) match {
+        case (
+            Some(baseProduct),
+            Some(minDataCenterBuildNumber),
+            Some(maxDataCenterBuildNumber)
+            ) =>
+          addonVersion = addonVersion
+            .compatibilities(
+              List(
+                ModelBuilders.versionCompatibilityForDataCenter(
+                  ApplicationKey.valueOf(baseProduct),
+                  minDataCenterBuildNumber, // DC version min compatibility
+                  maxDataCenterBuildNumber // DC version max compatibility
+                )
+              ).asJava
+            )
+            .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+        case _ =>
+          throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
+      }
     } else {
+      // Server only
       // if specified in the atlassian-plugin-marketing.xml, also take the server host compatibility
       (newVersionDetails.baseProduct, newVersionDetails.minServerBuildNumber, newVersionDetails.maxServerBuildNumber) match {
         case (Some(baseProduct), Some(minServerBuildNumber), Some(maxServerBuildNumber)) =>

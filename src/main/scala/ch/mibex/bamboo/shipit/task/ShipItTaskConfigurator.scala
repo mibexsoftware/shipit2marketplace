@@ -35,7 +35,8 @@ object ShipItTaskConfigurator {
   final val ArtifactToDeployKeyField = "artifactToDeployKey"
   final val AllArtifactsToDeployList = "allArtifactsToDeploy"
   final val RunOnBranchBuildsField = "runOnBranchBuilds"
-  final val CreateDcDeploymentField = "createDcDeployment"
+  final val ServerDeploymentField = "serverDeployment"
+  final val DcDeploymentField = "createDcDeployment"
   final val IsJiraReleasePanelModeField = "jiraReleasePanelDeploymentOnly"
   final val JiraProjectKeyField = "jiraProjectKey"
   final val JiraVersionPrefixField = "jiraVersionPrefix"
@@ -64,12 +65,15 @@ class ShipItTaskConfigurator @Autowired()(
     fillContextFromConfig(context, taskDefinition)
     context.put(JiraProjectList, getJiraProjects.asJava)
     context.put(AllArtifactsToDeployList, collectArtifactsForUiList(context).asJava)
-    // this is for old task configurations where it was not possible to choose the following two values
+    // this is for old task configurations where it was not possible to choose the following values
     if (Option(context.get(IsJiraReleasePanelModeField)).isEmpty) {
       context.put(IsJiraReleasePanelModeField, JBoolean.TRUE)
     }
     if (Option(context.get(JqlField)).isEmpty) {
       context.put(JqlField, DefaultJql)
+    }
+    if (Option(context.get(ServerDeploymentField)).isEmpty) {
+      context.put(ServerDeploymentField, JBoolean.TRUE)
     }
   }
 
@@ -80,7 +84,8 @@ class ShipItTaskConfigurator @Autowired()(
     context.put(IsPublicVersionField, JBoolean.TRUE)
     context.put(DeduceBuildNrField, JBoolean.TRUE)
     context.put(RunOnBranchBuildsField, JBoolean.FALSE)
-    context.put(CreateDcDeploymentField, JBoolean.FALSE)
+    context.put(ServerDeploymentField, JBoolean.TRUE)
+    context.put(DcDeploymentField, JBoolean.FALSE)
     context.put(ArtifactToDeployKeyField, "")
     context.put(JiraProjectKeyField, "")
     context.put(JiraVersionPrefixField, "")
@@ -109,7 +114,8 @@ class ShipItTaskConfigurator @Autowired()(
     config.put(JqlField, actionParams.getString(JqlField))
     config.put(IsPublicVersionField, actionParams.getBoolean(IsPublicVersionField).toString)
     config.put(RunOnBranchBuildsField, actionParams.getBoolean(RunOnBranchBuildsField).toString)
-    config.put(CreateDcDeploymentField, actionParams.getBoolean(CreateDcDeploymentField).toString)
+    config.put(ServerDeploymentField, actionParams.getBoolean(ServerDeploymentField).toString)
+    config.put(DcDeploymentField, actionParams.getBoolean(DcDeploymentField).toString)
     config.put(DeduceBuildNrField, actionParams.getBoolean(DeduceBuildNrField).toString)
     config.put(ArtifactToDeployKeyField, actionParams.getString(ArtifactToDeployKeyField))
     config.put(JiraProjectKeyField, actionParams.getString(JiraProjectKeyField))
@@ -127,7 +133,8 @@ class ShipItTaskConfigurator @Autowired()(
     context.put(JqlField, taskDefinition.getConfiguration.get(JqlField))
     context.put(DeduceBuildNrField, taskDefinition.getConfiguration.get(DeduceBuildNrField))
     context.put(RunOnBranchBuildsField, taskDefinition.getConfiguration.get(RunOnBranchBuildsField))
-    context.put(CreateDcDeploymentField, taskDefinition.getConfiguration.get(CreateDcDeploymentField))
+    context.put(ServerDeploymentField, taskDefinition.getConfiguration.get(ServerDeploymentField))
+    context.put(DcDeploymentField, taskDefinition.getConfiguration.get(DcDeploymentField))
     context.put(ArtifactToDeployKeyField, taskDefinition.getConfiguration.get(ArtifactToDeployKeyField))
     context.put(IsJiraReleasePanelModeField, taskDefinition.getConfiguration.get(IsJiraReleasePanelModeField))
     context.put(JiraProjectKeyField, taskDefinition.getConfiguration.get(JiraProjectKeyField))
@@ -165,6 +172,11 @@ class ShipItTaskConfigurator @Autowired()(
       errors.addError(JiraProjectKeyField, "JIRA project must not be empty when not using JIRA release panel mode.")
     }
     checkMpacCredentials(errors)
+
+    if (!(Option(actionParams.getBoolean(ServerDeploymentField))
+        .getOrElse(false) || Option(actionParams.getBoolean(DcDeploymentField)).getOrElse(false))) {
+      errors.addError(ServerDeploymentField, "At least one of Server or DC deployment must be selected.")
+    }
 
     if (isDeploymentPlan && !isUserNameGiven) {
       errors.addError(UserNameField, "A Bamboo user must be chosen if this task is part of a deployment project.")
