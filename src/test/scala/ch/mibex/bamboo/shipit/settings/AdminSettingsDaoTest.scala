@@ -56,7 +56,7 @@ class AdminSettingsDaoTest {
     val vendorCredentials = adminConfigDao.find().get
 
     assert(vendorCredentials.getVendorUserName == "myOtherVendor")
-    assert(vendorCredentials.getVendorPassword == "****")
+    assert(vendorCredentials.getVendorApiToken == "****")
   }
 
   @Test
@@ -65,14 +65,14 @@ class AdminSettingsDaoTest {
     assert(adminConfigDao.find().isEmpty)
     val vendorCredentials = adminConfigDao.createOrUpdate("vendorName1", "vendorPw")
     assert(vendorCredentials.getVendorUserName == "vendorName1")
-    assert(vendorCredentials.getVendorPassword == "********")
+    assert(vendorCredentials.getVendorApiToken == "********")
 
     adminConfigDao.createOrUpdate("vendorName2", "vendorPw2")
     assert(entityManager.count(classOf[AoAdminSettings]) == 1)
     val updatedCredentials = adminConfigDao.find().get
 
     assert(updatedCredentials.getVendorUserName == "vendorName2", updatedCredentials.getVendorUserName)
-    assert(updatedCredentials.getVendorPassword == "*********")
+    assert(updatedCredentials.getVendorApiToken == "*********")
   }
 
 }

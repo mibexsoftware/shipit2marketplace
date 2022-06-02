@@ -208,7 +208,7 @@ class ShipItTask @Autowired() (
     case Some(credentials) =>
       MpacCredentials(
         vendorUserName = credentials.getVendorUserName,
-        vendorPassword = encryptionService.decrypt(credentials.getVendorPassword)
+        vendorApiToken = encryptionService.decrypt(credentials.getVendorApiToken)
       )
     case None => throw new TaskException(i18nResolver.getText("shipit.task.marketplace.credentials.notfound"))
   }

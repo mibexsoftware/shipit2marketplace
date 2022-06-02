@@ -19,19 +19,19 @@ class AdminSettingsDao @Autowired() (
 
   // we cannot use @Transactional annotations but instead have to wrap our DB code into executeInTransaction
   // because this annotation cannot be used on Bamboo remote agents
-  def createOrUpdate(vendorName: String, vendorPassword: String): AoAdminSettings =
+  def createOrUpdate(vendorName: String, vendorApiToken: String): AoAdminSettings =
     executeInTransaction(() => {
       ao.find[AoAdminSettings, Integer](classOf[AoAdminSettings]).headOption match {
         case Some(credentials) =>
           credentials.setVendorUserName(vendorName)
-          credentials.setVendorPassword(encryptionService.encrypt(vendorPassword))
+          credentials.setVendorApiToken(encryptionService.encrypt(vendorApiToken))
           credentials.save()
           credentials
         case None =>
           ao.create[AoAdminSettings, Integer](
             classOf[AoAdminSettings],
             new DBParam(VENDOR_USERNAME_COLUMN, vendorName),
-            new DBParam(VENDOR_PASSWORD_COLUMN, encryptionService.encrypt(vendorPassword))
+            new DBParam(VENDOR_PASSWORD_COLUMN, encryptionService.encrypt(vendorApiToken))
           )
       }
     })

@@ -13,17 +13,17 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
     with Logging {
 
   private val MpacVendorNameField = "vendorName"
-  private val MpacVendorPasswordField = "vendorPassword"
+  private val MpacVendorApiTokenField = "vendorApiToken"
   private val EmptyFieldErrorMsg = "shipit.admin.credentials.error.empty"
 
   @BeanProperty var vendorName: String = _
-  @BeanProperty var vendorPassword: String = _
+  @BeanProperty var vendorApiToken: String = _
 
   override def doDefault(): String = {
     require(mpacCredentialsDao != null)
     mpacCredentialsDao.find() foreach { c =>
       vendorName = c.getVendorUserName
-      vendorPassword = c.getVendorPassword
+      vendorApiToken = c.getVendorApiToken
     }
     Action.INPUT
   }
@@ -41,17 +41,17 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
   }
 
   private def createOrUpdateVendorCredentials() {
-    mpacCredentialsDao.createOrUpdate(vendorName, vendorPassword)
+    mpacCredentialsDao.createOrUpdate(vendorName, vendorApiToken)
     // this is necessary because otherwise the pw would be shown in cleartext in the form
-    vendorPassword = encryptionService.encrypt(vendorPassword)
+    vendorApiToken = encryptionService.encrypt(vendorApiToken)
   }
 
   override def validate(): Unit = {
     if (Option(vendorName).getOrElse("").trim.isEmpty) {
       addFieldError(MpacVendorNameField, getText(EmptyFieldErrorMsg))
     }
-    if (Option(vendorPassword).getOrElse("").trim.isEmpty) {
-      addFieldError(MpacVendorPasswordField, getText(EmptyFieldErrorMsg))
+    if (Option(vendorApiToken).getOrElse("").trim.isEmpty) {
+      addFieldError(MpacVendorApiTokenField, getText(EmptyFieldErrorMsg))
     }
     if (!hasAnyErrors) {
       checkMpacConnection()
@@ -59,7 +59,7 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
   }
 
   private def checkMpacConnection() {
-    val credentials = MpacCredentials(vendorUserName = vendorName, vendorPassword = decryptIfNecessary(vendorPassword))
+    val credentials = MpacCredentials(vendorUserName = vendorName, vendorApiToken = decryptIfNecessary(vendorApiToken))
     MpacFacade.withMpac(credentials) { mpac =>
       mpac.checkCredentials() foreach { error =>
         addActionError(getText(error.i18n))
@@ -69,7 +69,7 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
 
   private def decryptIfNecessary(pw: String) =
     try {
-      encryptionService.decrypt(vendorPassword)
+      encryptionService.decrypt(vendorApiToken)
     } catch {
       case e: EncryptionException => pw // not encrypted
     }

@@ -17,7 +17,7 @@ import java.io.File
 import java.net.URL
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-case class MpacCredentials(vendorUserName: String, vendorPassword: String)
+case class MpacCredentials(vendorUserName: String, vendorApiToken: String)
 
 case class NewPluginVersionDetails(
     plugin: Addon,
@@ -84,7 +84,7 @@ object MpacError {
 object MpacFacade {
 
   def withMpac[T](credentials: MpacCredentials)(block: MpacFacade => T): T = {
-    val c = new Credentials(credentials.vendorUserName, credentials.vendorPassword)
+    val c = new Credentials(credentials.vendorUserName, credentials.vendorApiToken)
     val httpConfig = HttpConfiguration
       .builder()
       .readTimeoutMillis(6 * DEFAULT_READ_TIMEOUT_MILLIS) // Increase read timeout to work around slow marketplace responses.

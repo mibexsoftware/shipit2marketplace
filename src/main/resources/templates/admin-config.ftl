@@ -12,7 +12,7 @@
     <br>
 
     [@ww.textfield name='vendorName' labelKey='shipit.admin.vendor.login' descriptionKey='shipit.admin.vendor.login.description' required='true' /]
-    [@ww.password name='vendorPassword' labelKey='shipit.admin.vendor.password' descriptionKey='shipit.admin.vendor.password.description' required='true' showPassword='true' /]
+    [@ww.password name='vendorApiToken' labelKey='shipit.admin.vendor.apitoken' descriptionKey='shipit.admin.vendor.apitoken.description' required='true' showPassword='true' /]
 
 [/@ww.form]
 </body>

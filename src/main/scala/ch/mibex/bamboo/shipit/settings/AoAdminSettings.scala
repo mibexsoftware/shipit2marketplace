@@ -22,9 +22,9 @@ trait AoAdminSettings extends Entity {
 
   @NotNull
   @Accessor(VENDOR_PASSWORD_COLUMN)
-  def getVendorPassword: String
+  def getVendorApiToken: String
 
   @Mutator(VENDOR_PASSWORD_COLUMN)
-  def setVendorPassword(password: String): Unit
+  def setVendorApiToken(password: String): Unit
 
 }

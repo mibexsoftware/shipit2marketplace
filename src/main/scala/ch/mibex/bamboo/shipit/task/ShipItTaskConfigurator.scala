@@ -147,8 +147,8 @@ class ShipItTaskConfigurator @Autowired()(
 
     mpacCredentialsDao.find() match {
       case Some(credentials) =>
-        val password = encryptionService.decrypt(credentials.getVendorPassword)
-        val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, password)
+        val apiToken = encryptionService.decrypt(credentials.getVendorApiToken)
+        val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, apiToken)
         MpacFacade.withMpac(vendorCredentials) { mpac =>
           mpac.checkCredentials() foreach {
             case error @ MpacAuthenticationError() => errors.addErrorMessage(getText(error.i18n, getSettingsUrl))
