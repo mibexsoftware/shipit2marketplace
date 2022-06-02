@@ -246,7 +246,7 @@ class MpacFacade(client: MarketplaceClient) extends Logging {
                 )
               ).asJava
             )
-            .dataCenterBuildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number
+            .buildNumber(newVersionDetails.dataCenterBuildNumber) // Data Center version build number is returned as buildNumber for DC only apps!
         case _ =>
           throw new IllegalStateException(s"DC version details expected but not found: $newVersionDetails")
       }
