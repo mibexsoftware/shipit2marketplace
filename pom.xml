@@ -196,6 +196,31 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <executions>
+                    <execution>
+                        <id>scalatest</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>it/**/*</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>io.github.janhicken</groupId>
+                        <artifactId>surefire-scalatest</artifactId>
+                        <version>0.3</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>6.1.6</version>
@@ -316,7 +341,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
         <!-- WIRED TEST RUNNER DEPENDENCIES -->
@@ -364,15 +389,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.specs2</groupId>
-            <artifactId>specs2_${scala.base.version}</artifactId>
-            <version>2.3.11</version>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.base.version}</artifactId>
+            <version>3.2.12</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.scalactic</groupId>
-            <artifactId>scalactic_${scala.base.version}</artifactId>
-            <version>2.2.6</version>
+            <groupId>org.scalatestplus</groupId>
+            <artifactId>junit-4-13_${scala.base.version}</artifactId>
+            <version>3.2.12.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>javax.ws.rs</groupId>

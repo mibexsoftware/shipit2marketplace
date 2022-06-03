@@ -12,10 +12,8 @@ import com.atlassian.pageobjects.TestedProductFactory
 import com.atlassian.pageobjects.elements.query.Poller
 import com.atlassian.pageobjects.elements.{ElementBy, PageElement}
 import com.google.common.collect.Maps
-import org.junit.runner.RunWith
 import org.openqa.selenium.WebElement
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
+import org.scalatest.wordspec.AnyWordSpec
 
 // see https://ecosystem.atlassian.net/wiki/display/SELENIUM/Building+Page+Objects+with+Atlassian+Selenium
 class AdminSettingsComponent extends AbstractBambooAdminPage {
@@ -62,8 +60,7 @@ class ShipItTaskConfigComponent extends TaskComponent {
 
 }
 
-@RunWith(classOf[JUnitRunner])
-class ShiptItSmokeTest extends Specification {
+class ShiptItSmokeTest extends AnyWordSpec {
 
   "when plug-in is installed" should {
 
@@ -74,7 +71,6 @@ class ShiptItSmokeTest extends Specification {
       val settings = bamboo.visit(classOf[AdminSettingsComponent])
       settings.enterValues("test", "test")
       settings.submitAndExpectValidationError()
-      ok
     }
 
     "the task configuration screen should be avilable" in {
@@ -87,7 +83,6 @@ class ShiptItSmokeTest extends Specification {
 
       val configForm = bamboo.getPageBinder.navigateToAndBind(classOf[JobTaskConfigurationPage], null)
       configForm.addNewTask("ShipIt to Marketplace", classOf[ShipItTaskConfigComponent], "", Maps.newHashMap())
-      ok
     }
 
   }

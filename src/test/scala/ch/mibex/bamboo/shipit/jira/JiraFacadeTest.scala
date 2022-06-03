@@ -5,12 +5,18 @@ import com.atlassian.applinks.api.{ApplicationLinkRequest, ApplicationLinkReques
 import com.atlassian.sal.api.net.Request.MethodType
 import com.atlassian.sal.api.net.{Response, ReturningResponseHandler}
 import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
-import org.specs2.specification.Scope
+import org.scalatest.matchers.must.Matchers.{must, mustBe}
+import org.scalatest.wordspec.AnyWordSpec
+import org.mockito.Answers.*
+import org.mockito.ArgumentMatchers.*
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.when
+import org.scalatest.matchers.dsl.MatcherWords.include
+
+import org.scalatestplus.junit.JUnitRunner
+
 @RunWith(classOf[JUnitRunner])
-class JiraFacadeTest extends Specification with Mockito {
+class JiraFacadeTest extends AnyWordSpec {
 
   "collect release notes" should {
 
@@ -20,24 +26,26 @@ class JiraFacadeTest extends Specification with Mockito {
       val improvement =
         JiraIssue(key = "TEST-3", summary = "Improved colors in the UI dialogs", issueType = "Improvement")
       val bug2 = JiraIssue(key = "TEST-4", summary = "Database error with Oracle 9.1", issueType = "Bug")
-      JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must_==
-        "Bug fixes:<p>* Fixed authentication error<p>* Database error with Oracle 9.1<p>" +
-          "<p>New features:<p>* New help system<p><p>Improvements:<p>* Improved colors in the UI dialogs"
+      JiraFacade.toReleaseNotes(List(bug1, feature, improvement, bug2)) must (
+        include("Bug fixes:<p>* Fixed authentication error<p>* Database error with Oracle 9.1<p>") and
+        include ("New features:<p>* New help system")      and
+        include ("Improvements:<p>* Improved colors in the UI dialogs"))
     }
 
   }
 
   "collect release notes with one resolved feature and one fixed bug" should {
 
-    "yield release notes with two entries for them" in new JiraReleaseNotesContext {
+    //"Don't know how to mock generic type of ReturningResponseHandler with specs2/ScalaTest")
+    "yield release notes with two entries for them" ignore new JiraReleaseNotesContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.collectReleaseNotes(projectKey, projectVersion, DefaultJql) must_==
+      jiraFacade.collectReleaseNotes(projectKey, projectVersion, DefaultJql) mustBe
         """Bug fixes:<p>
           |* A problem which impairs or prevents the functions of the product<p>
           |<p>
           |Task:<p>
           |* Think about caching strategy""".stripMargin.replace("\n", "")
-    }.pendingUntilFixed("Don't know how to mock generic type of ReturningResponseHandler with specs2")
+    }
 
   }
 
@@ -80,7 +88,7 @@ class JiraFacadeTest extends Specification with Mockito {
             .replace("\n", ""),
         issueType = "Bug"
       )
-      JiraFacade.toReleaseNotes(List(bug1, bug2, bug3, bug4, bug5)) must_==
+      JiraFacade.toReleaseNotes(List(bug1, bug2, bug3, bug4, bug5)) mustBe
         """Bug fixes:<p>
           |* Fixed authentication error<p>
           |* ORA-00001: unique constraint (string.string) violated:
@@ -103,23 +111,23 @@ class JiraFacadeTest extends Specification with Mockito {
 
   "collect release summary with two versions" should {
 
-    "yield the summary for the version we are looking for" in new JiraReleaseSummaryContext {
+    //Don't know how to mock generic type of ReturningResponseHandler with specs2/ScalaTest
+    "yield the summary for the version we are looking for" ignore new JiraReleaseSummaryContext {
       val jiraFacade = new JiraFacade(applicationLinkRequestFactory)
-      jiraFacade.getVersionDescription(projectKey, "1.0.1") must beSome("Datacenter compatibility")
-    }.pendingUntilFixed("Don't know how to mock generic type of ReturningResponseHandler with specs2")
-
+      jiraFacade.getVersionDescription(projectKey, "1.0.1") mustBe Some("Datacenter compatibility")
+    }
   }
 
-  class JiraReleaseNotesContext extends Scope {
-    val applicationLinkRequestFactory = mock[ApplicationLinkRequestFactory]
+  trait JiraReleaseNotesContext {
+    val applicationLinkRequestFactory = mock(classOf[ApplicationLinkRequestFactory])
     val projectKey = "SHIPIT"
     val projectVersion = "1.0.0"
     val url =
       "rest/api/2/search?jql=project%3DSHIPIT+AND+fixVersion%3D1.0.0++AND+status+in+%28resolved%2Cclosed%2Cdone%29"
-    val applicationLinkRequest = mock[ApplicationLinkRequest]
-    applicationLinkRequestFactory.createRequest(MethodType.GET, url) returns applicationLinkRequest
-    val responseHandler = mock[ReturningResponseHandler[Response, String]]
-    applicationLinkRequest.executeAndReturn(responseHandler) returns
+    val applicationLinkRequest = mock(classOf[ApplicationLinkRequest])
+    when(applicationLinkRequestFactory.createRequest(MethodType.GET, url)).thenReturn(applicationLinkRequest)
+    val responseHandler = mock(classOf[ReturningResponseHandler[Response, String]])
+    when(applicationLinkRequest.executeAndReturn(responseHandler)).thenReturn(
       """{
         |  "expand": "schema,names",
         |  "startAt": 0,
@@ -161,17 +169,17 @@ class JiraFacadeTest extends Specification with Mockito {
         |      }
         |    }
         |  ]
-        |}""".stripMargin
+        |}""".stripMargin)
   }
 
-  class JiraReleaseSummaryContext extends Scope {
-    val applicationLinkRequestFactory = mock[ApplicationLinkRequestFactory]
+  trait JiraReleaseSummaryContext {
+    val applicationLinkRequestFactory = mock(classOf[ApplicationLinkRequestFactory])
     val projectKey = "SHIPIT"
-    val applicationLinkRequest = mock[ApplicationLinkRequest]
-    val responseHandler = mock[ReturningResponseHandler[Response, String]]
+    val applicationLinkRequest = mock(classOf[ApplicationLinkRequest])
+    val responseHandler = mock(classOf[ReturningResponseHandler[Response, String]])
     val url = "rest/api/2/project/SHIPIT/versions"
-    applicationLinkRequestFactory.createRequest(MethodType.GET, url) returns applicationLinkRequest
-    applicationLinkRequest.executeAndReturn(responseHandler) returns
+    when(applicationLinkRequestFactory.createRequest(MethodType.GET, url)).thenReturn(applicationLinkRequest)
+    when(applicationLinkRequest.executeAndReturn(responseHandler)).thenReturn(
       """[
         |  {
         |    "self": "http://localhost/jira/rest/api/2/version/10601",
@@ -194,7 +202,7 @@ class JiraFacadeTest extends Specification with Mockito {
         |    "userReleaseDate": "12/Nov/14",
         |    "projectId": 10401
         |  }
-        |]""".stripMargin
+        |]""".stripMargin)
   }
 
 }

@@ -50,11 +50,11 @@ class JiraFacade(requestFactory: ApplicationLinkRequestFactory) extends Logging 
   import JiraFacade._
 
   object ProjectVersionProtocol extends DefaultJsonProtocol {
-    implicit val projectVersionFormat = jsonFormat2(JiraProjectVersion)
+    implicit val projectVersionFormat: RootJsonFormat[JiraProjectVersion] = jsonFormat2(JiraProjectVersion)
   }
 
   object ProjectProtocol extends DefaultJsonProtocol {
-    implicit val projectFormat = jsonFormat2(JiraProject)
+    implicit val projectFormat: RootJsonFormat[JiraProject] = jsonFormat2(JiraProject)
   }
 
   def getServerInfo[T](responseHandler: ApplicationLinkResponseHandler[T]): T = {

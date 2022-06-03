@@ -3,29 +3,30 @@ package ch.mibex.bamboo.shipit.mpac
 import com.atlassian.marketplace.client.MarketplaceClient
 import com.atlassian.marketplace.client.api.AddonQuery
 import org.junit.runner.RunWith
-import org.mockito.Answers._
-import org.mockito.Mockito.withSettings
-import org.specs2.mock.Mockito
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
-import org.specs2.specification.Scope
+import org.mockito.ArgumentMatchers.*
+import org.mockito.Mockito.*
+import org.mockito.Mockito.{when, withSettings}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.must.Matchers.mustBe
 
 import java.util.Optional
+import org.scalatestplus.junit.JUnitRunner
+
 @RunWith(classOf[JUnitRunner])
-class MpacFacadeTest extends Specification with Mockito {
+class MpacFacadeTest extends AnyWordSpec {
 
   "find plug-in by key" should {
 
     "yield none if unknown" in new PluginNotFoundContext {
-      client.findPlugin("UNKNOWN PLUGIN") must beRight(None)
+      client.findPlugin("UNKNOWN PLUGIN") mustBe (Right(None))
     }
 
   }
 
-  class PluginNotFoundContext extends Scope {
-    val mpac = mock[MarketplaceClient](withSettings.defaultAnswer(RETURNS_DEEP_STUBS.get))
+  trait PluginNotFoundContext {
+    val mpac = mock(classOf[MarketplaceClient], RETURNS_DEEP_STUBS)
     // val plugin = mock[Plugin] // we cannot mock Plugin as it is final
-    mpac.addons().safeGetByKey(anyString, any[AddonQuery]) returns Optional.empty()
+    when(mpac.addons().safeGetByKey(anyString, any[AddonQuery])).thenReturn(Optional.empty())
     val client = new MpacFacade(mpac)
   }
 
