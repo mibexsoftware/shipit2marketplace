@@ -25,6 +25,7 @@
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
         <httpcomponent.version>4.5.13</httpcomponent.version>
+        <scalatest.version>3.2.12</scalatest.version>
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
     </properties>
@@ -388,16 +389,24 @@
             <version>2.3.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Use WordSpec style of ScalaTest-->
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.base.version}</artifactId>
-            <version>3.2.12</version>
+            <artifactId>scalatest-wordspec_${scala.base.version}</artifactId>
+            <version>${scalatest.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest-mustmatchers_${scala.base.version}</artifactId>
+            <version>${scalatest.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.scalatestplus</groupId>
             <artifactId>junit-4-13_${scala.base.version}</artifactId>
-            <version>3.2.12.0</version>
+            <version>${scalatest.version}.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
