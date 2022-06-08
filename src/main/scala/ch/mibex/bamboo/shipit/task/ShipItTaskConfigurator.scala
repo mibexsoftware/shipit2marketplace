@@ -46,7 +46,6 @@ object ShipItTaskConfigurator {
 
 @Component
 class ShipItTaskConfigurator @Autowired()(
-    @ComponentImport encryptionService: EncryptionService,
     @ComponentImport jiraApplinksService: JiraApplinksService,
     @ComponentImport impersonationService: ImpersonationService,
     @ComponentImport configAccessor: AdministrationConfigurationAccessor,
@@ -145,10 +144,8 @@ class ShipItTaskConfigurator @Autowired()(
   private def checkMpacCredentials(errors: ErrorCollection) {
     def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
-    mpacCredentialsDao.find() match {
-      case Some(credentials) =>
-        val apiToken = encryptionService.decrypt(credentials.getVendorApiToken)
-        val vendorCredentials = new MpacCredentials(credentials.getVendorUserName, apiToken)
+    mpacCredentialsDao.findCredentialsDecrypted() match {
+      case Some(vendorCredentials) =>
         MpacFacade.withMpac(vendorCredentials) { mpac =>
           mpac.checkCredentials() foreach {
             case error @ MpacAuthenticationError() => errors.addErrorMessage(getText(error.i18n, getSettingsUrl))

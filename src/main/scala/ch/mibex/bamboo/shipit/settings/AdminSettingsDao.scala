@@ -1,6 +1,7 @@
 package ch.mibex.bamboo.shipit.settings
 
 import ch.mibex.bamboo.shipit.Logging
+import ch.mibex.bamboo.shipit.mpac.MpacCredentials
 import com.atlassian.activeobjects.external.ActiveObjects
 import com.atlassian.bamboo.security.EncryptionService
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
@@ -38,6 +39,9 @@ class AdminSettingsDao @Autowired() (
 
   def find(): Option[AoAdminSettings] =
     executeInTransaction(() => ao.find[AoAdminSettings, Integer](classOf[AoAdminSettings]).headOption)
+
+  def findCredentialsDecrypted(): Option[MpacCredentials] = find()
+    .map(credentials => MpacCredentials(credentials.getVendorUserName, encryptionService.decrypt(credentials.getVendorApiToken)))
 
   private def executeInTransaction[T](fun: () => T) =
     ao.executeInTransaction(new TransactionCallback[T]() {
