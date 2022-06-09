@@ -64,8 +64,14 @@ class NewPluginVersionDataCollector @Autowired()(
         Option(dcBuildNrVariable).map(_.getValue).getOrElse("").trim.nonEmpty
       case None => false
     }
-    val createDcDeploymentToo =
-      Option(taskContext.getConfigurationMap.getAsBoolean(DcDeploymentField)).getOrElse(false)
+    // The ServerDeploymentField didn't exist in old release, defaults to true if not set
+    // Therefore, we read the value as Object, so we can get 'null' for unconfirmed, then parse it or default to true
+    val createServerVersion = Option(taskContext.getConfigurationMap.get(ServerDeploymentField))
+      .map(java.lang.Boolean.parseBoolean)
+      .getOrElse(true)
+    // DcDeploymentField didn't exist in old release, defaults to false if not set
+    // Therefore, we can .getAsBoolean, which defaults to false if the value is not set
+    val createDcDeploymentToo = taskContext.getConfigurationMap.getAsBoolean(DcDeploymentField)
     val compatibility = pluginMarketing.map(_.getCompatibility.get(0))
     val baseVersion = findBaseVersionForNewSubmission(plugin.getKey, context)
     NewPluginVersionDetails(
@@ -92,7 +98,7 @@ class NewPluginVersionDataCollector @Autowired()(
       userName = getJiraTriggerUser(context),
       baseProduct = compatibility.map(_.getProduct.name()),
       versionNumber = pluginInfo.getVersion,
-      createServerVersion = Option(taskContext.getConfigurationMap.getAsBoolean(ServerDeploymentField)).getOrElse(true),
+      createServerVersion = createServerVersion,
       isDcBuildNrConfigured = isDcBuildNrConfigured,
       createDcVersionToo = createDcDeploymentToo,
       binary = artifact,
