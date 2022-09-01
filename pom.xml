@@ -16,7 +16,7 @@
         <bamboo.version>6.0.0</bamboo.version>
         <bamboo.data.version>6.0.0</bamboo.data.version>
         <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>8.2.2</amps.version>
+        <amps.version>8.7.0</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.13.8</scala.version>
         <scala.base.version>3</scala.base.version>
