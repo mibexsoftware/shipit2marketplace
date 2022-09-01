@@ -13,9 +13,8 @@
     <description>No manual uploads and duplicating release notes anymore - ship your p2 apps to the Atlassian Marketplace with one click</description>
     <packaging>atlassian-plugin</packaging>
     <properties>
-        <bamboo.version>6.0.0</bamboo.version>
-        <bamboo.data.version>6.0.0</bamboo.data.version>
-        <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
+        <bamboo.version>9.0.0</bamboo.version>
+        <bamboo.data.version>9.0.0</bamboo.data.version>
         <amps.version>8.7.0</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.13.8</scala.version>
@@ -435,12 +434,4 @@
             <version>2.8.9</version>
         </dependency>
     </dependencies>
-    <profiles>
-        <profile>
-            <id>bamboo-9</id>
-            <properties>
-                <bamboo.version>9.0.0-rc1</bamboo.version>
-            </properties>
-        </profile>
-    </profiles>
 </project>
