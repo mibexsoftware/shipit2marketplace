@@ -13,10 +13,9 @@
     <description>No manual uploads and duplicating release notes anymore - ship your p2 apps to the Atlassian Marketplace with one click</description>
     <packaging>atlassian-plugin</packaging>
     <properties>
-        <bamboo.version>6.0.0</bamboo.version>
-        <bamboo.data.version>6.0.0</bamboo.data.version>
-        <!--<bamboo.data.path>${project.basedir}/src/test/resources/bamboo-5.2-integration-test-home.zip</bamboo.data.path>-->
-        <amps.version>8.2.2</amps.version>
+        <bamboo.version>9.0.0</bamboo.version>
+        <bamboo.data.version>9.0.0</bamboo.data.version>
+        <amps.version>8.7.0</amps.version>
         <xvfb.enable>true</xvfb.enable>
         <scala.version>2.13.8</scala.version>
         <scala.base.version>3</scala.base.version>
@@ -25,6 +24,7 @@
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
         <atlassian.spring.scanner.version>1.2.6</atlassian.spring.scanner.version>
         <httpcomponent.version>4.5.13</httpcomponent.version>
+        <activeobjects.version>4.0.4</activeobjects.version>
         <scalatest.version>3.2.12</scalatest.version>
         <!-- This key is used to keep the consistency between the key in atlassian-plugin.xml and the key to generate bundle. -->
         <atlassian.plugin.key>${project.groupId}.${project.artifactId}</atlassian.plugin.key>
@@ -120,7 +120,7 @@
                     <mainConsole>dotty.tools.MainGenericRunner</mainConsole>
                     <args>
                         <!-- https://docs.scala-lang.org/scala3/guides/migration/tooling-migration-mode.html -->
-                        <arg>-source:3.0-migration</arg>
+                        <arg>-source:3.0</arg>
                         <arg>-explain</arg>
                         <arg>-explain-types</arg>
                         <arg>-Wconf:any:verbose</arg>
@@ -165,6 +165,7 @@
                             org.springframework.osgi.*;resolution:="optional",
                             org.eclipse.gemini.blueprint.*;resolution:="optional",
                             com.atlassian.plugin.osgi.bridge.external,
+                            com.atlassian.bamboo.plugins.artifact,
                             *;resolution:=optional
                         </Import-Package>
                         <Export-Package/>
@@ -265,12 +266,22 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>com.atlassian.bamboo.plugins</groupId>
+            <artifactId>bamboo-artifact-downloader-plugin</artifactId>
+            <version>${bamboo.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.atlassian.marketplace</groupId>
             <artifactId>marketplace-client-java</artifactId>
             <version>3.1.6</version>
             <exclusions>
                 <exclusion>
                     <artifactId>commons-lang3</artifactId>
+                    <groupId>org.apache.commons</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-text</artifactId>
                     <groupId>org.apache.commons</groupId>
                 </exclusion>
             </exclusions>
@@ -282,15 +293,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>${httpcomponent.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.atlassian.activeobjects</groupId>
             <artifactId>activeobjects-plugin</artifactId>
-            <version>0.25.0</version>
+            <version>${activeobjects.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -309,11 +314,17 @@
             <groupId>com.atlassian.plugin</groupId>
             <artifactId>atlassian-plugin-marketing</artifactId>
             <version>1.12</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>atlassian-secure-xml</artifactId>
+                    <groupId>com.atlassian.security</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
             <artifactId>spray-json_2.13</artifactId>
-            <version>1.3.5</version>
+            <version>1.3.6</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
@@ -326,18 +337,6 @@
             <artifactId>servlet-api</artifactId>
             <scope>provided</scope>
             <version>2.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.atlassian.applinks</groupId>
-            <artifactId>applinks-api</artifactId>
-            <version>4.1.2</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.atlassian.applinks</groupId>
-            <artifactId>applinks-spi</artifactId>
-            <version>4.1.2</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -363,12 +362,16 @@
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>atlassian-pageobjects-api</artifactId>
+                    <groupId>com.atlassian.selenium</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>com.atlassian.activeobjects</groupId>
             <artifactId>activeobjects-test</artifactId>
-            <version>0.25.0</version>
+            <version>${activeobjects.version}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -381,12 +384,6 @@
             <groupId>com.atlassian.bamboo</groupId>
             <artifactId>atlassian-bamboo-test-utils</artifactId>
             <version>${bamboo.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.atlassian.selenium</groupId>
-            <artifactId>atlassian-pageobjects-elements</artifactId>
-            <version>2.3.0</version>
             <scope>test</scope>
         </dependency>
         <!-- Use WordSpec style of ScalaTest-->
@@ -407,6 +404,12 @@
             <groupId>org.scalatestplus</groupId>
             <artifactId>junit-4-13_${scala.base.version}</artifactId>
             <version>${scalatest.version}.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+            <version>2.7.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -49,14 +49,6 @@ class UtilsTest extends AnyWordSpec {
         Map("test" -> Map("theAnswer" -> 42, "isTrue" -> true))
     }
 
-    "find file by ant pattern" in {
-      val res = Utils.findMostRecentMatchingFile("**/*.zip", new File(getClass.getResource("/").toURI))
-      res match {
-        case Some(file) if file.getName == "bamboo-5.2-integration-test-home.zip" => true mustBe true
-        case _ => true mustBe false
-      }
-    }
-
   }
 
 }

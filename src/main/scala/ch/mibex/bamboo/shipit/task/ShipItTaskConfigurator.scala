@@ -141,7 +141,7 @@ class ShipItTaskConfigurator @Autowired()(
 
   }
 
-  private def checkMpacCredentials(errors: ErrorCollection) {
+  private def checkMpacCredentials(errors: ErrorCollection) = {
     def getSettingsUrl = s"$getBambooBaseUrl/admin/shipit2mpac/viewShip2MpacConfiguration.action"
 
     mpacCredentialsDao.findCredentialsDecrypted() match {
@@ -197,7 +197,7 @@ class ShipItTaskConfigurator @Autowired()(
       actionParams: ActionParametersMap,
       applLink: ApplicationLink,
       errors: ErrorCollection
-  ) {
+  ) = {
     Option(actionParams.getString(UserNameField)) match {
       case Some(userName) if userName.trim.nonEmpty => // user can be an empty string when passed from the task
         if (Option(bambooUserManager.getBambooUser(userName)).isEmpty) {
@@ -213,7 +213,7 @@ class ShipItTaskConfigurator @Autowired()(
       jiraApplicationLink: ApplicationLink,
       userName: String,
       errors: ErrorCollection
-  ) {
+  ) = {
     val jiraApplLinkCheck = impersonationService.runAsUser(
       userName,
       new Callable[Unit] {
