@@ -194,7 +194,7 @@ class ShipItTask @Autowired() (
     }
   }
 
-  private def storeResultsLinkInfo(commonTaskContext: CommonTaskContext, newVersion: AddonVersion) {
+  private def storeResultsLinkInfo(commonTaskContext: CommonTaskContext, newVersion: AddonVersion) = {
     commonTaskContext match {
       case t: TaskContext if newVersion.getArtifactInfo.isDefined && newVersion.getName.isDefined =>
         val customBuildData = t.getBuildContext.getBuildResult.getCustomBuildData

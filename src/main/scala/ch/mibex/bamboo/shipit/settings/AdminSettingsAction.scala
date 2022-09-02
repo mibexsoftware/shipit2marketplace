@@ -40,7 +40,7 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
     }
   }
 
-  private def createOrUpdateVendorCredentials() {
+  private def createOrUpdateVendorCredentials() = {
     mpacCredentialsDao.createOrUpdate(vendorName, vendorApiToken)
     // this is necessary because otherwise the pw would be shown in cleartext in the form
     vendorApiToken = encryptionService.encrypt(vendorApiToken)
@@ -58,7 +58,7 @@ class AdminSettingsAction(encryptionService: EncryptionService, mpacCredentialsD
     }
   }
 
-  private def checkMpacConnection() {
+  private def checkMpacConnection() = {
     val credentials = MpacCredentials(vendorUserName = vendorName, vendorApiToken = decryptIfNecessary(vendorApiToken))
     MpacFacade.withMpac(credentials) { mpac =>
       mpac.checkCredentials() foreach { error =>

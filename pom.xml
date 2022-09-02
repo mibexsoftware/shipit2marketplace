@@ -120,7 +120,7 @@
                     <mainConsole>dotty.tools.MainGenericRunner</mainConsole>
                     <args>
                         <!-- https://docs.scala-lang.org/scala3/guides/migration/tooling-migration-mode.html -->
-                        <arg>-source:3.0-migration</arg>
+                        <arg>-source:3.0</arg>
                         <arg>-explain</arg>
                         <arg>-explain-types</arg>
                         <arg>-Wconf:any:verbose</arg>
