@@ -24,8 +24,8 @@ class AdminSettingsComponent extends AbstractBambooAdminPage {
   @ElementBy(name = "vendorName")
   var vendorNameText: TextElement = _
 
-  @ElementBy(name = "vendorPassword")
-  var vendorPasswordText: TextElement = _
+  @ElementBy(name = "vendorApiToken")
+  var vendorApiToken: TextElement = _
 
   @ElementBy(id = "updateShip2MpacConfiguration")
   var configPanel: PageElement = _
@@ -43,9 +43,9 @@ class AdminSettingsComponent extends AbstractBambooAdminPage {
     this
   }
 
-  def enterValues(vendorName: String, vendorPassword: String): Unit = {
+  def enterValues(vendorName: String, vendorToken: String): Unit = {
     vendorNameText.setText(vendorName)
-    vendorPasswordText.setText(vendorName)
+    vendorApiToken.setText(vendorToken)
   }
 
 }
