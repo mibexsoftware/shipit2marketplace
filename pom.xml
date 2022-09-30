@@ -17,7 +17,7 @@
         <bamboo.data.version>9.0.0</bamboo.data.version>
         <amps.version>8.7.0</amps.version>
         <xvfb.enable>true</xvfb.enable>
-        <scala.version>2.13.8</scala.version>
+        <scala.version>2.13.9</scala.version>
         <scala.base.version>3</scala.base.version>
         <scala3.version>3.1.2</scala3.version>
         <scalafmt.version>1.5.1</scalafmt.version>
